@@ -8,7 +8,7 @@ const MODIFIER_TAGS = {
   fart: '\u{1F4A8}',
   spinner: '\u{1F504}',
   teleporter: '\u{1F52E}',
-  fakeExit: '\u{1F3C6}',
+  fakeExit: '\u{1F534}',
   gravity: '\u{1F300}',
   fatCursor: '\u{2B55}',
   slideWall: '\u{2194}\u{FE0F}',
@@ -24,21 +24,12 @@ function getModifiersInGrid(grid) {
 
 function getAllLevels() {
   const all = []
-
-  // chapter 1: hand-crafted levels 1-10
   for (let i = 0; i < LEVELS.length; i++) {
-    all.push({
-      ...LEVELS[i],
-      chapter: 'Baby Steps',
-      chapterNumber: 1,
-    })
+    all.push({ ...LEVELS[i], chapter: 'Baby Steps', chapterNumber: 1 })
   }
-
-  // chapters 2-10: generated levels 11-100
   for (let i = 11; i <= 100; i++) {
     all.push(generateLevel(i))
   }
-
   return all
 }
 
@@ -52,34 +43,41 @@ function LevelSelect({ onSelectLevel, onBuild }) {
     const level = ALL_LEVELS[i]
     const cn = level.chapterNumber
     if (cn !== currentChapter) {
-      chapters.push({
-        number: cn,
-        name: level.chapter,
-        levels: [],
-      })
+      chapters.push({ number: cn, name: level.chapter, levels: [] })
       currentChapter = cn
     }
     chapters[chapters.length - 1].levels.push({ ...level, index: i })
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '40px 20px', minHeight: '100vh', overflowY: 'auto' }}>
-      <h1 style={{ fontSize: '32px', letterSpacing: '3px' }}>MAZOCHIST</h1>
-      <p style={{ color: '#666', fontSize: '13px', textAlign: 'center', maxWidth: '400px' }}>
-        100 levels. 10 chapters. Each one introduces something worse.
-      </p>
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: '24px', padding: '48px 20px 60px', minHeight: '100vh',
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{
+          fontSize: '40px', fontWeight: 800, letterSpacing: '1px',
+          color: 'var(--text)', marginBottom: '8px',
+        }}>
+          mazochist
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '15px', maxWidth: '320px' }}>
+          100 lovingly crafted levels of suffering.
+          <br />Each chapter teaches you a new way to fail.
+        </p>
+      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', maxWidth: '500px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%', maxWidth: '480px' }}>
         {chapters.map((ch) => (
           <div key={ch.number}>
             <div style={{
-              fontSize: '11px', color: '#ffcc00', letterSpacing: '2px',
-              padding: '4px 0', marginBottom: '8px', borderBottom: '1px solid #222',
-              textTransform: 'uppercase',
+              fontSize: '11px', fontWeight: 700, color: 'var(--accent)',
+              letterSpacing: '1.5px', textTransform: 'uppercase',
+              padding: '0 4px 8px', borderBottom: '1px solid #ede6dd',
             }}>
               Chapter {ch.number}: {ch.name}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
               {ch.levels.map((level) => {
                 const mods = getModifiersInGrid(level.grid)
                 return (
@@ -87,30 +85,49 @@ function LevelSelect({ onSelectLevel, onBuild }) {
                     key={level.index}
                     onClick={() => onSelectLevel(level.index)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: '12px',
-                      padding: '8px 12px', background: '#111', border: '1px solid #1a1a1a',
-                      borderRadius: '4px', cursor: 'pointer', textAlign: 'left',
-                      transition: 'border-color 0.15s',
+                      display: 'flex', alignItems: 'center', gap: '14px',
+                      padding: '10px 14px', background: 'var(--bg-card)',
+                      border: '1px solid #ede6dd', borderRadius: 'var(--radius)',
+                      cursor: 'pointer', textAlign: 'left',
+                      transition: 'all 0.2s ease',
+                      boxShadow: 'var(--shadow)',
+                      fontFamily: 'var(--font)',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.borderColor = '#ffcc00'}
-                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1a1a1a'}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = 'var(--shadow-hover)'
+                      e.currentTarget.style.background = 'var(--bg-card-hover)'
+                      e.currentTarget.style.borderColor = 'var(--accent-light)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = 'var(--shadow)'
+                      e.currentTarget.style.background = 'var(--bg-card)'
+                      e.currentTarget.style.borderColor = '#ede6dd'
+                    }}
                   >
-                    <span style={{ color: '#555', fontSize: '12px', fontFamily: 'monospace', width: '28px', textAlign: 'right' }}>
+                    <span style={{
+                      color: 'var(--accent)', fontSize: '16px', fontWeight: 700,
+                      width: '28px', textAlign: 'right',
+                    }}>
                       {level.index + 1}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: '#ccc', fontSize: '13px', fontFamily: 'monospace' }}>
+                      <div style={{ color: 'var(--text)', fontSize: '14px', fontWeight: 600 }}>
                         {level.name}
                       </div>
-                      <div style={{ color: '#444', fontSize: '10px', fontFamily: 'monospace', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{
+                        color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
                         {level.description}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '2px', fontSize: '12px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: '2px', fontSize: '13px', flexShrink: 0 }}>
                       {mods.slice(0, 5).map((m) => (
                         <span key={m}>{MODIFIER_TAGS[m] || '?'}</span>
                       ))}
-                      {mods.length > 5 && <span style={{ color: '#555' }}>+{mods.length - 5}</span>}
+                      {mods.length > 5 && (
+                        <span style={{ color: 'var(--text-light)', fontSize: '11px' }}>+{mods.length - 5}</span>
+                      )}
                     </div>
                   </button>
                 )
@@ -120,18 +137,24 @@ function LevelSelect({ onSelectLevel, onBuild }) {
         ))}
       </div>
 
-      <div style={{ marginTop: '12px', marginBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-        <div style={{ width: '80px', height: '1px', background: '#333' }} />
+      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+        <div style={{ width: '60px', height: '1px', background: '#ede6dd' }} />
         <button
           onClick={onBuild}
           style={{
-            padding: '10px 24px', background: 'transparent',
-            border: '1px solid #444', borderRadius: '4px', cursor: 'pointer',
-            color: '#888', fontFamily: 'monospace', fontSize: '13px',
-            transition: 'border-color 0.15s, color 0.15s',
+            padding: '10px 28px', background: 'transparent',
+            border: '1.5px solid #ede6dd', borderRadius: 'var(--radius)',
+            cursor: 'pointer', color: 'var(--text-muted)', fontFamily: 'var(--font)',
+            fontSize: '14px', fontWeight: 600, transition: 'all 0.2s ease',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffcc00'; e.currentTarget.style.color = '#ffcc00' }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#888' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--accent)'
+            e.currentTarget.style.color = 'var(--accent)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#ede6dd'
+            e.currentTarget.style.color = 'var(--text-muted)'
+          }}
         >
           or build your own
         </button>

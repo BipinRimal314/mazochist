@@ -1,3 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a0a; }
-body.playing { overflow: hidden; }
+
+:root {
+  --bg: #faf6f0;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fff8f0;
+  --text: #3d3229;
+  --text-muted: #a89888;
+  --text-light: #c4b5a5;
+  --accent: #e8985a;
+  --accent-light: #f4c79a;
+  --success: #7eb88a;
+  --danger: #d97373;
+  --danger-light: #f0b0b0;
+  --lavender: #b8a9d4;
+  --ice-blue: #a3cce0;
+  --gold: #e8b84a;
+  --shadow: 0 2px 12px rgba(61, 50, 41, 0.08);
+  --shadow-hover: 0 4px 20px rgba(61, 50, 41, 0.12);
+  --radius: 12px;
+  --font: 'Nunito', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  font-family: var(--font);
+  color: var(--text);
+}
+
+body.playing {
+  overflow: hidden;
+}

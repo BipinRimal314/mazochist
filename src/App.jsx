@@ -42,7 +42,7 @@ function App() {
   }
 
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', background: '#0a0a0a', color: '#fff', fontFamily: 'monospace' }}>
+    <div style={{ width: '100vw', minHeight: '100vh' }}>
       {mode === 'levels' && (
         <LevelSelect
           onSelectLevel={handleSelectLevel}
