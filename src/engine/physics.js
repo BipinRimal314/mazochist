@@ -55,29 +55,42 @@ function updateBall(ball, input, grid, cellSize, now) {
   vx *= fric
   vy *= fric
 
-  const maxSpeed = cellSize * 0.4
+  const maxSpeed = cellSize * 0.35
   const spd = Math.sqrt(vx * vx + vy * vy)
   if (spd > maxSpeed) {
     vx = (vx / spd) * maxSpeed
     vy = (vy / spd) * maxSpeed
   }
 
-  const newX = x + vx
-  const newY = y + vy
-  const result = resolveCollisions(newX, newY, ball.radius, grid, cellSize)
+  // sub-step movement to prevent tunneling
+  const steps = 4
+  const stepVx = vx / steps
+  const stepVy = vy / steps
+  let hitX = false
+  let hitY = false
 
-  const newCellX = Math.floor(result.x / cellSize)
-  const newCellY = Math.floor(result.y / cellSize)
+  for (let i = 0; i < steps; i++) {
+    x += stepVx
+    y += stepVy
+    const resolved = resolveCollisions(x, y, ball.radius, grid, cellSize)
+    if (resolved.hitX) hitX = true
+    if (resolved.hitY) hitY = true
+    x = resolved.x
+    y = resolved.y
+  }
+
+  const newCellX = Math.floor(x / cellSize)
+  const newCellY = Math.floor(y / cellSize)
   const newCell = getCell(grid, newCellX, newCellY)
   const fat = newCell && newCell.modifier === 'fatCursor'
   const radius = fat ? ball.baseRadius * 3 : ball.baseRadius
 
   return {
     ...ball,
-    x: result.x,
-    y: result.y,
-    vx: result.hitX ? vx * -0.3 : vx,
-    vy: result.hitY ? vy * -0.3 : vy,
+    x,
+    y,
+    vx: hitX ? vx * -0.3 : vx,
+    vy: hitY ? vy * -0.3 : vy,
     radius,
     fat,
     onIce,
@@ -90,6 +103,7 @@ function resolveCollisions(x, y, radius, grid, cellSize) {
   let hitX = false
   let hitY = false
 
+  // border clamping
   const totalW = grid.cols * cellSize
   const totalH = grid.rows * cellSize
   if (x - radius < 0) { x = radius; hitX = true }
@@ -97,48 +111,72 @@ function resolveCollisions(x, y, radius, grid, cellSize) {
   if (y - radius < 0) { y = radius; hitY = true }
   if (y + radius > totalH) { y = totalH - radius; hitY = true }
 
-  const cellX = Math.floor(x / cellSize)
-  const cellY = Math.floor(y / cellSize)
+  // check the cell the ball center is in — its walls constrain the ball
+  // walls are mirrored (toggleWallBetween sets both sides), so checking
+  // the current cell is sufficient
+  for (let pass = 0; pass < 2; pass++) {
+    const cx = Math.floor(x / cellSize)
+    const cy = Math.floor(y / cellSize)
+    const cell = getCell(grid, cx, cy)
+    if (!cell) break
 
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      const cx = cellX + dx
-      const cy = cellY + dy
-      const cell = getCell(grid, cx, cy)
-      if (!cell) continue
+    const left = cx * cellSize
+    const top = cy * cellSize
+    const right = left + cellSize
+    const bottom = top + cellSize
 
-      const wallLeft = cx * cellSize
-      const wallTop = cy * cellSize
-      const wallRight = wallLeft + cellSize
-      const wallBottom = wallTop + cellSize
+    if (cell.walls.right && x + radius > right) {
+      x = right - radius
+      hitX = true
+    }
+    if (cell.walls.left && x - radius < left) {
+      x = left + radius
+      hitX = true
+    }
+    if (cell.walls.bottom && y + radius > bottom) {
+      y = bottom - radius
+      hitY = true
+    }
+    if (cell.walls.top && y - radius < top) {
+      y = top + radius
+      hitY = true
+    }
 
-      if (cell.walls.top) {
-        if (x + radius > wallLeft && x - radius < wallRight) {
-          if (y - radius < wallTop && y > wallTop - cellSize) {
-            y = wallTop + radius; hitY = true
-          }
-        }
+    // also check the cell the ball edge is reaching into
+    // (handles case where ball center is near a cell boundary)
+    const edgeRightCell = getCell(grid, Math.floor((x + radius) / cellSize), cy)
+    if (edgeRightCell && edgeRightCell.walls.left) {
+      const wallX = Math.floor((x + radius) / cellSize) * cellSize
+      if (x + radius > wallX && x < wallX) {
+        x = wallX - radius
+        hitX = true
       }
-      if (cell.walls.bottom) {
-        if (x + radius > wallLeft && x - radius < wallRight) {
-          if (y + radius > wallBottom && y < wallBottom + cellSize) {
-            y = wallBottom - radius; hitY = true
-          }
-        }
+    }
+
+    const edgeLeftCell = getCell(grid, Math.floor((x - radius) / cellSize), cy)
+    if (edgeLeftCell && edgeLeftCell.walls.right) {
+      const wallX = (Math.floor((x - radius) / cellSize) + 1) * cellSize
+      if (x - radius < wallX && x > wallX) {
+        x = wallX + radius
+        hitX = true
       }
-      if (cell.walls.left) {
-        if (y + radius > wallTop && y - radius < wallBottom) {
-          if (x - radius < wallLeft && x > wallLeft - cellSize) {
-            x = wallLeft + radius; hitX = true
-          }
-        }
+    }
+
+    const edgeBottomCell = getCell(grid, cx, Math.floor((y + radius) / cellSize))
+    if (edgeBottomCell && edgeBottomCell.walls.top) {
+      const wallY = Math.floor((y + radius) / cellSize) * cellSize
+      if (y + radius > wallY && y < wallY) {
+        y = wallY - radius
+        hitY = true
       }
-      if (cell.walls.right) {
-        if (y + radius > wallTop && y - radius < wallBottom) {
-          if (x + radius > wallRight && x < wallRight + cellSize) {
-            x = wallRight - radius; hitX = true
-          }
-        }
+    }
+
+    const edgeTopCell = getCell(grid, cx, Math.floor((y - radius) / cellSize))
+    if (edgeTopCell && edgeTopCell.walls.bottom) {
+      const wallY = (Math.floor((y - radius) / cellSize) + 1) * cellSize
+      if (y - radius < wallY && y > wallY) {
+        y = wallY + radius
+        hitY = true
       }
     }
   }
