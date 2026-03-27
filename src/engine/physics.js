@@ -63,21 +63,17 @@ function updateBall(ball, input, grid, cellSize, now) {
     const pullDx = centerX - x
     const pullDy = centerY - y
     const dist = Math.sqrt(pullDx * pullDx + pullDy * pullDy)
+    const halfCell = cellSize * 0.5
 
-    // strong pull that increases as you get closer
-    const pullStrength = dist < 2 ? 0.15 : 0.08
+    // pull scales: strong at edges, weaker near center so you can fight out
+    // escapable if you hold a direction, but you have to work for it
+    const pullStrength = 0.04 + (dist / halfCell) * 0.02
     vx += pullDx * pullStrength
     vy += pullDy * pullStrength
 
-    // sucked into the center = death
-    if (dist < 3) {
-      return {
-        ...createBallState(grid, cellSize),
-        deaths: ball.deaths + 1,
-        reversed: ball.reversed,
-        reversedUntil: ball.reversedUntil,
-      }
-    }
+    // slow you down inside the well (like wading through mud)
+    vx *= 0.92
+    vy *= 0.92
   }
 
   const maxSpeed = cellSize * 0.35
