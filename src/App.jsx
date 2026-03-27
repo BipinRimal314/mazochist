@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import MazeBuilder from './components/MazeBuilder'
+import MazeSolver from './components/MazeSolver'
 
 function App() {
   const [mode, setMode] = useState('build')
@@ -11,13 +12,7 @@ function App() {
 
   return (
     <div style={{ width: '100vw', minHeight: '100vh', background: '#0a0a0a', color: '#fff', fontFamily: 'monospace' }}>
-      {mode === 'build' ? (
-        <MazeBuilder />
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-          <h1>Loading maze...</h1>
-        </div>
-      )}
+      {mode === 'build' ? <MazeBuilder /> : <MazeSolver />}
     </div>
   )
 }
