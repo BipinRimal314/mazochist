@@ -60,8 +60,24 @@ function updateBall(ball, input, grid, cellSize, now) {
   if (cell && cell.modifier === 'gravity') {
     const centerX = (cellX + 0.5) * cellSize
     const centerY = (cellY + 0.5) * cellSize
-    vx += (centerX - x) * 0.02
-    vy += (centerY - y) * 0.02
+    const pullDx = centerX - x
+    const pullDy = centerY - y
+    const dist = Math.sqrt(pullDx * pullDx + pullDy * pullDy)
+
+    // strong pull that increases as you get closer
+    const pullStrength = dist < 2 ? 0.15 : 0.08
+    vx += pullDx * pullStrength
+    vy += pullDy * pullStrength
+
+    // sucked into the center = death
+    if (dist < 3) {
+      return {
+        ...createBallState(grid, cellSize),
+        deaths: ball.deaths + 1,
+        reversed: ball.reversed,
+        reversedUntil: ball.reversedUntil,
+      }
+    }
   }
 
   const maxSpeed = cellSize * 0.35
