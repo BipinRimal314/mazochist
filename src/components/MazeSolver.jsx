@@ -7,8 +7,9 @@ import { playSound } from '../engine/sound'
 
 const CELL_SIZE = 30
 
-function MazeSolver() {
+function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
   const [grid] = useState(() => {
+    if (levelGrid) return levelGrid
     const hash = window.location.hash.slice(1)
     return decodeFromHash(hash)
   })
@@ -158,9 +159,14 @@ function MazeSolver() {
   const seconds = elapsed % 60
 
   if (state.won) {
+    const goBack = onBack || (() => { window.location.hash = ''; window.location.reload() })
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: '16px' }}>
         <h1 style={{ fontSize: '48px', color: '#00ff88' }}>YOU ESCAPED</h1>
+        {levelNumber != null && (
+          <p style={{ fontSize: '14px', color: '#555' }}>Level {levelNumber + 1} cleared</p>
+        )}
         {grid.hiddenWord && (
           <p style={{ fontSize: '24px', color: '#ffcc00' }}>
             The maze said: &ldquo;{grid.hiddenWord}&rdquo;
@@ -169,16 +175,32 @@ function MazeSolver() {
         <p style={{ fontSize: '18px', color: '#888' }}>
           Time: {minutes}:{seconds.toString().padStart(2, '0')} | Deaths: {state.ball.deaths}
         </p>
-        <button
-          onClick={() => { window.location.hash = ''; window.location.reload() }}
-          style={{
-            padding: '12px 24px', background: '#ffcc00', color: '#000',
-            border: 'none', borderRadius: '4px', cursor: 'pointer',
-            fontFamily: 'monospace', fontWeight: 'bold', fontSize: '16px',
-          }}
-        >
-          BUILD YOUR OWN
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {onNextLevel && (
+            <button
+              onClick={onNextLevel}
+              style={{
+                padding: '12px 24px', background: '#ffcc00', color: '#000',
+                border: 'none', borderRadius: '4px', cursor: 'pointer',
+                fontFamily: 'monospace', fontWeight: 'bold', fontSize: '16px',
+              }}
+            >
+              NEXT LEVEL
+            </button>
+          )}
+          <button
+            onClick={goBack}
+            style={{
+              padding: '12px 24px', background: onNextLevel ? 'transparent' : '#ffcc00',
+              color: onNextLevel ? '#888' : '#000',
+              border: onNextLevel ? '1px solid #444' : 'none',
+              borderRadius: '4px', cursor: 'pointer',
+              fontFamily: 'monospace', fontWeight: 'bold', fontSize: '14px',
+            }}
+          >
+            {onBack ? 'LEVELS' : 'BUILD YOUR OWN'}
+          </button>
+        </div>
       </div>
     )
   }
@@ -204,7 +226,7 @@ function MazeSolver() {
       <p style={{ color: '#444', fontSize: '11px' }}>WASD or arrow keys to move</p>
 
       <button
-        onClick={() => { window.location.hash = ''; window.location.reload() }}
+        onClick={onBack || (() => { window.location.hash = ''; window.location.reload() })}
         style={{
           padding: '8px 16px', background: 'transparent', color: '#ff4444',
           border: '1px solid #ff4444', borderRadius: '4px', cursor: 'pointer',
