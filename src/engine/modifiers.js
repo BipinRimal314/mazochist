@@ -11,24 +11,17 @@ function applyModifierEffect(type, ball, grid, cellSize, now, setState) {
       }
 
     case 'fakeExit':
-      playSound('victory')
-      setState((s) => ({ ...s, showFakeWin: true }))
-      setTimeout(() => {
-        playSound('fail')
-        setState((s) => ({
-          ...s,
-          showFakeWin: false,
-          ball: {
-            ...s.ball,
-            x: (grid.start.x + 0.5) * cellSize,
-            y: (grid.start.y + 0.5) * cellSize,
-            vx: 0,
-            vy: 0,
-            deaths: s.ball.deaths + 1,
-          },
-        }))
-      }, 1500)
-      return ball
+      playSound('fail')
+      setState((s) => ({ ...s, showPsyche: true }))
+      setTimeout(() => setState((s) => ({ ...s, showPsyche: false })), 800)
+      return {
+        ...ball,
+        x: (grid.start.x + 0.5) * cellSize,
+        y: (grid.start.y + 0.5) * cellSize,
+        vx: 0,
+        vy: 0,
+        deaths: ball.deaths + 1,
+      }
 
     case 'teleporter': {
       const currentCellX = Math.floor(ball.x / cellSize)

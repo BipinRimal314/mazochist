@@ -19,6 +19,7 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
     startTime: Date.now(),
     won: false,
     showFakeWin: false,
+    showPsyche: false,
   }))
 
   const canvasRef = useRef(null)
@@ -105,7 +106,7 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
       const now = Date.now()
 
       setState((prev) => {
-        if (prev.won || prev.showFakeWin) return prev
+        if (prev.won) return prev
 
         const animatedGrid = getAnimatedGrid(grid, now)
         let ball = updateBall(prev.ball, inputRef.current, animatedGrid, CELL_SIZE, now)
@@ -214,12 +215,12 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
 
       <canvas ref={canvasRef} style={{ border: '1px solid #333' }} />
 
-      {state.showFakeWin && (
+      {state.showPsyche && (
         <div style={{
           position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.9)', zIndex: 100,
+          zIndex: 100, pointerEvents: 'none',
         }}>
-          <h1 style={{ fontSize: '64px', color: '#00ff88' }}>YOU WIN!</h1>
+          <h1 style={{ fontSize: '72px', color: '#ff4444', textShadow: '0 0 30px #ff0000' }}>PSYCHE</h1>
         </div>
       )}
 
