@@ -12,6 +12,14 @@ function App() {
     if (hash) setMode('shared')
   }, [])
 
+  useEffect(() => {
+    if (mode === 'playing' || mode === 'shared') {
+      document.body.classList.add('playing')
+    } else {
+      document.body.classList.remove('playing')
+    }
+  }, [mode])
+
   const handleSelectLevel = (index) => {
     setCurrentLevel(index)
     setMode('playing')
