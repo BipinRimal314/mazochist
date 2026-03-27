@@ -41,8 +41,21 @@ function updateBall(ball, input, grid, cellSize, now) {
   const cell = getCell(grid, cellX, cellY)
   const onIce = cell && cell.modifier === 'ice'
 
-  vx += dx * speed * 0.3
-  vy += dy * speed * 0.3
+  if (onIce) {
+    // on ice: ignore new input, preserve momentum, no friction
+    // only apply input if ball is nearly stopped (to get unstuck)
+    const currentSpeed = Math.sqrt(vx * vx + vy * vy)
+    if (currentSpeed < 0.5) {
+      vx += dx * speed * 0.5
+      vy += dy * speed * 0.5
+    }
+    // no friction on ice — ball slides until it hits a wall
+  } else {
+    vx += dx * speed * 0.3
+    vy += dy * speed * 0.3
+    vx *= friction
+    vy *= friction
+  }
 
   if (cell && cell.modifier === 'gravity') {
     const centerX = (cellX + 0.5) * cellSize
@@ -50,10 +63,6 @@ function updateBall(ball, input, grid, cellSize, now) {
     vx += (centerX - x) * 0.02
     vy += (centerY - y) * 0.02
   }
-
-  const fric = onIce ? iceFriction : friction
-  vx *= fric
-  vy *= fric
 
   const maxSpeed = cellSize * 0.35
   const spd = Math.sqrt(vx * vx + vy * vy)
