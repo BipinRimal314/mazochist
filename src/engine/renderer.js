@@ -75,6 +75,17 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
   if (showModifiers) {
     for (const cell of grid.cells) {
       if (!cell.modifier) continue
+      // fake exits look identical to the real end — no icon, no hint
+      if (cell.modifier === 'fakeExit') {
+        ctx.fillStyle = COLORS.end
+        ctx.fillRect(
+          cell.x * cellSize + 2,
+          cell.y * cellSize + 2,
+          cellSize - 4,
+          cellSize - 4
+        )
+        continue
+      }
       const color = COLORS.modifier[cell.modifier] || '#666'
       ctx.fillStyle = color + '44'
       ctx.fillRect(
