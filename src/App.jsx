@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
-import LevelSelect from './components/LevelSelect'
+import LevelSelect, { ALL_LEVELS } from './components/LevelSelect'
 import MazeBuilder from './components/MazeBuilder'
 import MazeSolver from './components/MazeSolver'
-import { LEVELS } from './engine/levels'
 
 function App() {
   const [mode, setMode] = useState('levels')
@@ -19,8 +18,9 @@ function App() {
   }
 
   const handleNextLevel = () => {
-    if (currentLevel != null && currentLevel < LEVELS.length - 1) {
-      setCurrentLevel(currentLevel + 1)
+    if (currentLevel != null && currentLevel < ALL_LEVELS.length - 1) {
+      const next = currentLevel + 1
+      setCurrentLevel(next)
       setMode('levels')
       setTimeout(() => setMode('playing'), 0)
     } else {
@@ -46,10 +46,10 @@ function App() {
       {mode === 'playing' && currentLevel != null && (
         <MazeSolver
           key={currentLevel}
-          levelGrid={LEVELS[currentLevel].grid}
+          levelGrid={ALL_LEVELS[currentLevel].grid}
           levelNumber={currentLevel}
           onBack={handleBack}
-          onNextLevel={currentLevel < LEVELS.length - 1 ? handleNextLevel : null}
+          onNextLevel={currentLevel < ALL_LEVELS.length - 1 ? handleNextLevel : null}
         />
       )}
     </div>
