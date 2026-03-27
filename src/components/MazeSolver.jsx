@@ -22,7 +22,7 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
       ball: createBallState(grid, CELL_SIZE),
       startTime: Date.now(),
       won: false,
-      showPsyche: false,
+      psycheUntil: 0,
       fakeExitsTotal: fakeExits.length,
       fakeExitsCollected: new Set(),
       exitUnlocked: fakeExits.length === 0,
@@ -227,7 +227,7 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
 
       <canvas ref={canvasRef} style={{ border: '1px solid #333' }} />
 
-      {state.showPsyche && (
+      {Date.now() < state.psycheUntil && (
         <div style={{
           position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 100, pointerEvents: 'none',

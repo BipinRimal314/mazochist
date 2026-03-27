@@ -18,26 +18,21 @@ function applyModifierEffect(type, ball, grid, cellSize, now, setState) {
       // check + update collected set in one setState
       let shouldTeleport = false
       setState((s) => {
-        if (s.fakeExitsCollected.has(key)) {
-          // already collected — pass through silently
-          return s
-        }
+        if (s.fakeExitsCollected.has(key)) return s
         const collected = new Set(s.fakeExitsCollected)
         collected.add(key)
-        const allCollected = collected.size >= s.fakeExitsTotal
         shouldTeleport = true
         return {
           ...s,
           fakeExitsCollected: collected,
-          exitUnlocked: allCollected,
-          showPsyche: true,
+          exitUnlocked: collected.size >= s.fakeExitsTotal,
+          psycheUntil: Date.now() + 800,
         }
       })
 
       if (!shouldTeleport) return ball
 
       playSound('fail')
-      setTimeout(() => setState((s) => ({ ...s, showPsyche: false })), 800)
       return {
         ...ball,
         x: (grid.start.x + 0.5) * cellSize,
