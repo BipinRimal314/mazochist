@@ -33,7 +33,7 @@ const MODIFIER_LABELS = {
 }
 
 function drawMaze(ctx, grid, cellSize, options = {}) {
-  const { showModifiers = true, showGrid = true } = options
+  const { showModifiers = true, showGrid = true, collectedFakeExits = new Set() } = options
   const width = grid.cols * cellSize
   const height = grid.rows * cellSize
 
@@ -75,15 +75,31 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
   if (showModifiers) {
     for (const cell of grid.cells) {
       if (!cell.modifier) continue
-      // fake exits look identical to the real end — no icon, no hint
+      // fake exits: uncollected look like the real exit, collected are dimmed
       if (cell.modifier === 'fakeExit') {
-        ctx.fillStyle = COLORS.end
-        ctx.fillRect(
-          cell.x * cellSize + 2,
-          cell.y * cellSize + 2,
-          cellSize - 4,
-          cellSize - 4
-        )
+        const key = `${cell.x},${cell.y}`
+        if (collectedFakeExits.has(key)) {
+          ctx.fillStyle = '#333333'
+          ctx.fillRect(
+            cell.x * cellSize + 2,
+            cell.y * cellSize + 2,
+            cellSize - 4,
+            cellSize - 4
+          )
+          ctx.font = `${cellSize * 0.4}px monospace`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillStyle = '#555'
+          ctx.fillText('\u{2713}', cell.x * cellSize + cellSize / 2, cell.y * cellSize + cellSize / 2)
+        } else {
+          ctx.fillStyle = COLORS.end
+          ctx.fillRect(
+            cell.x * cellSize + 2,
+            cell.y * cellSize + 2,
+            cellSize - 4,
+            cellSize - 4
+          )
+        }
         continue
       }
       const color = COLORS.modifier[cell.modifier] || '#666'

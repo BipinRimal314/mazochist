@@ -10,9 +10,33 @@ function applyModifierEffect(type, ball, grid, cellSize, now, setState) {
         reversedUntil: now + 2400,
       }
 
-    case 'fakeExit':
+    case 'fakeExit': {
+      const cellX = Math.floor(ball.x / cellSize)
+      const cellY = Math.floor(ball.y / cellSize)
+      const key = `${cellX},${cellY}`
+
+      // check + update collected set in one setState
+      let shouldTeleport = false
+      setState((s) => {
+        if (s.fakeExitsCollected.has(key)) {
+          // already collected — pass through silently
+          return s
+        }
+        const collected = new Set(s.fakeExitsCollected)
+        collected.add(key)
+        const allCollected = collected.size >= s.fakeExitsTotal
+        shouldTeleport = true
+        return {
+          ...s,
+          fakeExitsCollected: collected,
+          exitUnlocked: allCollected,
+          showPsyche: true,
+        }
+      })
+
+      if (!shouldTeleport) return ball
+
       playSound('fail')
-      setState((s) => ({ ...s, showPsyche: true }))
       setTimeout(() => setState((s) => ({ ...s, showPsyche: false })), 800)
       return {
         ...ball,
@@ -22,6 +46,7 @@ function applyModifierEffect(type, ball, grid, cellSize, now, setState) {
         vy: 0,
         deaths: ball.deaths + 1,
       }
+    }
 
     case 'teleporter': {
       const currentCellX = Math.floor(ball.x / cellSize)
@@ -70,7 +95,7 @@ function renderModifierOverlay(ctx, type, ball, grid, cellSize, now) {
   if (type === 'spinner') {
     const cellX = Math.floor(ball.x / cellSize)
     const cellY = Math.floor(ball.y / cellSize)
-    const angle = ((now / 3000) * Math.PI * 2) % (Math.PI * 2)
+    const angle = ((now / 2500) * Math.PI * 2) % (Math.PI * 2)
     ctx.save()
     ctx.translate((cellX + 0.5) * cellSize, (cellY + 0.5) * cellSize)
     ctx.rotate(angle)

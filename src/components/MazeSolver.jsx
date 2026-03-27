@@ -14,13 +14,20 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
     return decodeFromHash(hash)
   })
 
-  const [state, setState] = useState(() => ({
-    ball: createBallState(grid, CELL_SIZE),
-    startTime: Date.now(),
-    won: false,
-    showFakeWin: false,
-    showPsyche: false,
-  }))
+  const [state, setState] = useState(() => {
+    const fakeExits = grid.cells
+      .filter((c) => c.modifier === 'fakeExit')
+      .map((c) => `${c.x},${c.y}`)
+    return {
+      ball: createBallState(grid, CELL_SIZE),
+      startTime: Date.now(),
+      won: false,
+      showPsyche: false,
+      fakeExitsTotal: fakeExits.length,
+      fakeExitsCollected: new Set(),
+      exitUnlocked: fakeExits.length === 0,
+    }
+  })
 
   const canvasRef = useRef(null)
   const inputRef = useRef({ up: false, down: false, left: false, right: false })
@@ -122,7 +129,7 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
         }
         if (!trigger) lastTriggerRef.current = null
 
-        if (checkWin(ball, animatedGrid, CELL_SIZE)) {
+        if (checkWin(ball, animatedGrid, CELL_SIZE) && prev.exitUnlocked) {
           playSound('victory')
           return { ...prev, ball, won: true }
         }
@@ -145,7 +152,7 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
     canvas.height = grid.rows * CELL_SIZE
 
     const animatedGrid = getAnimatedGrid(grid, Date.now())
-    drawMaze(ctx, animatedGrid, CELL_SIZE)
+    drawMaze(ctx, animatedGrid, CELL_SIZE, { collectedFakeExits: state.fakeExitsCollected })
 
     const trigger = checkModifierTrigger(state.ball, animatedGrid, CELL_SIZE)
     if (trigger) {
@@ -211,6 +218,11 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
       <div style={{ display: 'flex', gap: '24px', fontSize: '14px', color: '#888' }}>
         <span>Time: {minutes}:{seconds.toString().padStart(2, '0')}</span>
         <span>Deaths: {state.ball.deaths}</span>
+        {state.fakeExitsTotal > 0 && (
+          <span style={{ color: state.exitUnlocked ? '#00ff88' : '#ff4444' }}>
+            Exit: {state.fakeExitsCollected.size}/{state.fakeExitsTotal}
+          </span>
+        )}
       </div>
 
       <canvas ref={canvasRef} style={{ border: '1px solid #333' }} />

@@ -97,7 +97,7 @@ function updateBall(ball, input, grid, cellSize, now) {
   const newCellY = Math.floor(y / cellSize)
   const newCell = getCell(grid, newCellX, newCellY)
   const fat = newCell && newCell.modifier === 'fatCursor'
-  const radius = fat ? ball.baseRadius * 3 : ball.baseRadius
+  const radius = fat ? ball.baseRadius * 1.8 : ball.baseRadius
 
   return {
     ...ball,
