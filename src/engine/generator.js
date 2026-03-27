@@ -112,11 +112,32 @@ function solveMaze(grid) {
   return []
 }
 
+// identify which cells on the solution path are turns vs straight segments
+function getStraightCells(solutionPath) {
+  const straight = new Set()
+  for (let i = 1; i < solutionPath.length - 1; i++) {
+    const prev = solutionPath[i - 1]
+    const curr = solutionPath[i]
+    const next = solutionPath[i + 1]
+    // straight if prev→curr→next is the same direction
+    const dx1 = curr.x - prev.x
+    const dy1 = curr.y - prev.y
+    const dx2 = next.x - curr.x
+    const dy2 = next.y - curr.y
+    if (dx1 === dx2 && dy1 === dy2) {
+      straight.add(`${curr.x},${curr.y}`)
+    }
+  }
+  return straight
+}
+
 // place modifiers along or near the solution path for maximum suffering
 function placeModifiers(grid, solutionPath, modifierTypes, count, rng, avoidStart, avoidEnd) {
+  const straightCells = getStraightCells(solutionPath)
+
   const candidates = solutionPath.filter((p, i) => {
     if (avoidStart && i < 3) return false
-    if (avoidEnd && i > solutionPath.length - 3) return false
+    if (avoidEnd && i > solutionPath.length - 4) return false
     const cell = getCell(grid, p.x, p.y)
     return cell && !cell.modifier
   })
@@ -129,7 +150,21 @@ function placeModifiers(grid, solutionPath, modifierTypes, count, rng, avoidStar
 
   const placed = Math.min(count, candidates.length)
   for (let i = 0; i < placed; i++) {
-    const mod = modifierTypes[Math.floor(rng() * modifierTypes.length)]
+    let mod = modifierTypes[Math.floor(rng() * modifierTypes.length)]
+    const key = `${candidates[i].x},${candidates[i].y}`
+
+    // ice only on straight segments — placing ice on turns makes levels unbeatable
+    // (ball slides past the turn and can never reach the exit)
+    if (mod === 'ice' && !straightCells.has(key)) {
+      // swap to a non-ice modifier
+      const nonIce = modifierTypes.filter((m) => m !== 'ice')
+      if (nonIce.length > 0) {
+        mod = nonIce[Math.floor(rng() * nonIce.length)]
+      } else {
+        continue // skip if ice is the only option and cell is a turn
+      }
+    }
+
     grid = setModifier(grid, candidates[i].x, candidates[i].y, mod)
   }
 
