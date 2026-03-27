@@ -62,18 +62,11 @@ function updateBall(ball, input, grid, cellSize, now) {
     const centerY = (cellY + 0.5) * cellSize
     const pullDx = centerX - x
     const pullDy = centerY - y
-    const dist = Math.sqrt(pullDx * pullDx + pullDy * pullDy)
-    const halfCell = cellSize * 0.5
 
-    // pull scales: strong at edges, weaker near center so you can fight out
-    // escapable if you hold a direction, but you have to work for it
-    const pullStrength = 0.04 + (dist / halfCell) * 0.02
-    vx += pullDx * pullStrength
-    vy += pullDy * pullStrength
-
-    // slow you down inside the well (like wading through mud)
-    vx *= 0.92
-    vy *= 0.92
+    // gentle constant pull — slows you down and drifts you toward center
+    // but holding a direction always wins
+    vx += pullDx * 0.03
+    vy += pullDy * 0.03
   }
 
   const maxSpeed = cellSize * 0.35
