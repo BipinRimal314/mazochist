@@ -7,7 +7,7 @@ function applyModifierEffect(type, ball, grid, cellSize, now, setState) {
       return {
         ...ball,
         reversed: true,
-        reversedUntil: now + 2000,
+        reversedUntil: now + 2400,
       }
 
     case 'fakeExit':

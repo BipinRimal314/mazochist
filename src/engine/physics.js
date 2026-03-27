@@ -17,9 +17,9 @@ function createBallState(grid, cellSize) {
 }
 
 function updateBall(ball, input, grid, cellSize, now) {
-  const speed = 3
-  const friction = 0.85
-  const iceFriction = 0.995
+  const speed = 3.6
+  const friction = 0.82
+  const iceFriction = 0.997
 
   let { x, y, vx, vy } = ball
   const reversed = ball.reversed && now < ball.reversedUntil
@@ -65,11 +65,11 @@ function updateBall(ball, input, grid, cellSize, now) {
 
     // gentle constant pull — slows you down and drifts you toward center
     // but holding a direction always wins
-    vx += pullDx * 0.03
-    vy += pullDy * 0.03
+    vx += pullDx * 0.036
+    vy += pullDy * 0.036
   }
 
-  const maxSpeed = cellSize * 0.35
+  const maxSpeed = cellSize * 0.42
   const spd = Math.sqrt(vx * vx + vy * vy)
   if (spd > maxSpeed) {
     vx = (vx / spd) * maxSpeed
@@ -222,7 +222,7 @@ function resetBall(ball, grid, cellSize) {
 function getAnimatedGrid(grid, now) {
   const newCells = grid.cells.map((cell) => {
     if (cell.modifier === 'slideWall') {
-      const phase = Math.sin(now / 1000) > 0
+      const phase = Math.sin(now / 830) > 0
       return {
         ...cell,
         walls: {
@@ -233,7 +233,7 @@ function getAnimatedGrid(grid, now) {
       }
     }
     if (cell.modifier === 'spinner') {
-      const tick = Math.floor(now / 3000) % 4
+      const tick = Math.floor(now / 2500) % 4
       const rotations = [
         { top: cell.walls.top, right: cell.walls.right, bottom: cell.walls.bottom, left: cell.walls.left },
         { top: cell.walls.left, right: cell.walls.top, bottom: cell.walls.right, left: cell.walls.bottom },
