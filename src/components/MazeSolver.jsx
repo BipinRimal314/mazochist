@@ -245,7 +245,7 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
 
         // stalker — record position and check if caught
         let stalker = recordStalkerPosition(prev.stalker, ball.x, ball.y, CELL_SIZE)
-        stalker = updateStalker(stalker, ball.x, ball.y, CELL_SIZE)
+        stalker = updateStalker(stalker, ball.x, ball.y, CELL_SIZE, ag)
         if (stalker.caught) {
           playSound('death')
           telemetryRef.current = recordDeath(telemetryRef.current, ball.x / CELL_SIZE, ball.y / CELL_SIZE, 'stalker')
@@ -255,7 +255,7 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
             ball: createBallState(grid, CELL_SIZE),
             deathsThisLevel: newDeaths,
             stalker: resetStalker(stalker),
-            lastQuip: 'it caught you. move faster.',
+            lastQuip: 'the apparition caught you.',
           }
         }
 
@@ -530,8 +530,8 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
             animation: cd === 0 ? 'none' : undefined,
           }}>
             {cd > 0
-              ? `\u{1F440} stalker in ${cd}s`
-              : '\u{1F47B} stalker is hunting you'}
+              ? `\u{1F440} apparition in ${cd}s`
+              : '\u{1F47B} apparition is hunting you'}
           </div>
         )
       })()}

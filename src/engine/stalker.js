@@ -1,5 +1,5 @@
 /**
- * The Stalker — a shadow that follows the player's exact path on a delay.
+ * The Apparition — a shadow that follows the player's exact path on a delay.
  *
  * Records every position the ball visits. After a delay (default 10s),
  * the shadow starts replaying that path. If the shadow reaches the ball, death.
@@ -11,7 +11,7 @@
 
 const STALKER_DELAY_MS = 10000
 const STALKER_SAMPLE_INTERVAL = 100  // record position every 100ms
-const STALKER_CATCH_RADIUS = 1.2     // cells — how close before death
+const STALKER_CATCH_RADIUS = 0.6      // cells — must overlap the ball, not just be nearby
 
 function createStalker(enabled = false) {
   return {
@@ -43,7 +43,7 @@ function recordStalkerPosition(stalker, ballX, ballY, cellSize) {
   }
 }
 
-function updateStalker(stalker, ballX, ballY, cellSize) {
+function updateStalker(stalker, ballX, ballY, cellSize, grid) {
   if (!stalker.enabled) return stalker
   if (stalker.path.length === 0) return stalker
 
@@ -76,14 +76,20 @@ function updateStalker(stalker, ballX, ballY, cellSize) {
   const shadowX = shadowPos.x
   const shadowY = shadowPos.y
 
-  // check if shadow caught the ball
+  // check if shadow caught the ball — must be in same cell, no killing through walls
   const ballCellX = ballX / cellSize
   const ballCellY = ballY / cellSize
+  const ballGridX = Math.floor(ballCellX)
+  const ballGridY = Math.floor(ballCellY)
+  const shadowGridX = Math.floor(shadowX)
+  const shadowGridY = Math.floor(shadowY)
+
+  const sameCell = ballGridX === shadowGridX && ballGridY === shadowGridY
   const dist = Math.sqrt(
     Math.pow(shadowX - ballCellX, 2) + Math.pow(shadowY - ballCellY, 2)
   )
 
-  const caught = dist < STALKER_CATCH_RADIUS
+  const caught = sameCell && dist < STALKER_CATCH_RADIUS
 
   return {
     ...stalker,
