@@ -95,7 +95,16 @@ async function loadAllLevels() {
     console.warn('Could not load VAE+RL levels:', e)
   }
 
-  return [...intro, ...evolved, ...rlPlaced, ...vaeCombined]
+  let rlV2 = []
+  try {
+    const rlV2Resp = await fetch('/levels/rl_v2_15.json')
+    const rlV2Data = await rlV2Resp.json()
+    rlV2 = loadMLLevels(rlV2Data, 'Information War', 5)
+  } catch (e) {
+    console.warn('Could not load RL v2 levels:', e)
+  }
+
+  return [...intro, ...evolved, ...rlPlaced, ...vaeCombined, ...rlV2]
 }
 
 export { loadAllLevels }

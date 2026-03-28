@@ -19,7 +19,11 @@ from ..simulate.metrics import compute_all_metrics, difficulty_score
 
 
 # obstacle types the agent can place
-OBSTACLE_TYPES = ['trap', 'fake_exit', 'gate_right', 'gate_down', 'gate_left', 'gate_up']
+OBSTACLE_TYPES = [
+    'trap', 'fake_exit',
+    'gate_right', 'gate_down', 'gate_left', 'gate_up',
+    'mimic', 'memory_wipe', 'liar_wall',
+]
 NUM_OBSTACLE_TYPES = len(OBSTACLE_TYPES)
 
 
@@ -61,8 +65,8 @@ class MazeObstaclePlacementEnv(gym.Env):
         self.num_sim_players = num_sim_players
 
         self.num_cells = grid_size * grid_size
-        # per-cell features: 4 walls + trap + gate + fake_exit + on_solution + dist_to_exit = 9
-        self.cell_features = 9
+        # per-cell features: 4 walls + trap + gate + fake_exit + on_solution + dist_to_exit + mimic + memory_wipe + liar = 12
+        self.cell_features = 12
         # global features: placements_remaining, fog, grid_size = 3
         self.global_features = 3
 
@@ -123,6 +127,11 @@ class MazeObstaclePlacementEnv(gym.Env):
                 # normalized distance to exit
                 dist = abs(x - self.maze.end[0]) + abs(y - self.maze.end[1])
                 cell_obs[idx, 8] = dist / max_dist
+                # new obstacles
+                mod = self.maze.modifiers.get((x, y))
+                cell_obs[idx, 9] = 1.0 if mod == 'mimic' else 0.0
+                cell_obs[idx, 10] = 1.0 if mod == 'memory_wipe' else 0.0
+                cell_obs[idx, 11] = 1.0 if (isinstance(mod, tuple) and mod[0] == 'liar_wall') else 0.0
 
         global_obs = np.array([
             self.placements_left / self.max_placements,
@@ -199,6 +208,34 @@ class MazeObstaclePlacementEnv(gym.Env):
                         reward += 0.4
                     else:
                         reward -= 0.3  # gates off solution are less useful
+                elif obstacle == 'mimic':
+                    if (x, y) not in self.solution_set:
+                        self.maze.modifiers[(x, y)] = 'mimic'
+                        # closer to exit = more deceptive
+                        dist_to_end = abs(x - self.maze.end[0]) + abs(y - self.maze.end[1])
+                        max_dist = self.grid_size * 2
+                        reward += 0.6 * (1 - dist_to_end / max_dist)
+                    else:
+                        reward -= 1.0  # mimic on solution = unfair
+                elif obstacle == 'memory_wipe':
+                    if (x, y) in self.solution_set:
+                        self.maze.modifiers[(x, y)] = 'memory_wipe'
+                        reward += 0.8  # devastating on solution path
+                    else:
+                        reward += 0.2
+                elif obstacle == 'liar_wall':
+                    # create a random liar wall configuration
+                    liar = {}
+                    for d_name, d_bit in [('top', TOP), ('right', RIGHT), ('bottom', BOTTOM), ('left', LEFT)]:
+                        has_wall = bool(self.maze.walls[y, x] & d_bit)
+                        if np.random.random() < 0.4:
+                            liar[d_name] = not has_wall  # flip the visual
+                    if liar:
+                        self.maze.modifiers[(x, y)] = ('liar_wall', liar)
+                        if (x, y) in self.solution_set:
+                            reward += 0.7  # liar on solution = very confusing
+                        else:
+                            reward += 0.3
 
                 self.placements_left -= 1
 
@@ -210,6 +247,7 @@ class MazeObstaclePlacementEnv(gym.Env):
                 self.maze.traps.discard((x, y))
                 self.maze.fake_exits.discard((x, y))
                 self.maze.gates.pop((x, y), None)
+                self.maze.modifiers.pop((x, y), None)
             else:
                 self.solution = new_solution
                 self.solution_set = set(new_solution)
