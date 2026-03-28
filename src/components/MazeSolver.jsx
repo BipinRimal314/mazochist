@@ -6,6 +6,7 @@ import { applyModifierEffect, renderModifierOverlay } from '../engine/modifiers'
 import { playSound } from '../engine/sound'
 import { drawFog, drawCorruption, drawTrapFlash, spreadCorruption } from '../engine/fog'
 import { createSession, recordPosition, recordDeath, recordGatePass, endSession, saveSession } from '../engine/telemetry'
+import { createStalker, recordStalkerPosition, updateStalker, drawStalker, resetStalker, stalkerCountdown } from '../engine/stalker'
 
 const CELL_SIZE = 30
 
@@ -70,6 +71,7 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
       lastCorruptionTick: 0,
       deathsThisLevel: 0,
       corruptionActive: false,
+      stalker: createStalker(eraType === 'punishing' || eraType === 'sadistic'),
     }
   })
 
@@ -241,8 +243,25 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
         // record position for telemetry
         telemetryRef.current = recordPosition(telemetryRef.current, ball.x / CELL_SIZE, ball.y / CELL_SIZE)
 
+        // stalker — record position and check if caught
+        let stalker = recordStalkerPosition(prev.stalker, ball.x, ball.y, CELL_SIZE)
+        stalker = updateStalker(stalker, ball.x, ball.y, CELL_SIZE)
+        if (stalker.caught) {
+          playSound('death')
+          telemetryRef.current = recordDeath(telemetryRef.current, ball.x / CELL_SIZE, ball.y / CELL_SIZE, 'stalker')
+          const newDeaths = prev.deathsThisLevel + 1
+          return {
+            ...prev,
+            ball: createBallState(grid, CELL_SIZE),
+            deathsThisLevel: newDeaths,
+            stalker: resetStalker(stalker),
+            lastQuip: 'it caught you. move faster.',
+          }
+        }
+
         return {
           ...prev, ball,
+          stalker,
           visitedCells: newVisited,
           corruptedCells: corruption.corruptedCells,
           corruptionFrontier: corruption.frontier,
@@ -275,11 +294,14 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
     // corruption overlay
     drawCorruption(ctx, grid, CELL_SIZE, state.corruptedCells, Date.now())
 
+    // stalker (visible through fog — you can always see it coming)
+    drawStalker(ctx, state.stalker, CELL_SIZE, Date.now())
+
     // trap flash (above fog so player sees where they died)
     if (state.trapFlashPos && Date.now() < state.trapFlashUntil) {
       drawTrapFlash(ctx, CELL_SIZE, state.trapFlashPos.x, state.trapFlashPos.y)
     }
-  }, [state.ball, state.fogRadius, state.corruptedCells, state.trapFlashPos, grid])
+  }, [state.ball, state.fogRadius, state.corruptedCells, state.trapFlashPos, state.stalker, grid])
 
   const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
   const mins = Math.floor(elapsed / 60)
@@ -496,6 +518,23 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
           {'\u{1F32B}\u{FE0F}'} fog active
         </div>
       )}
+
+      {state.stalker.enabled && (() => {
+        const cd = stalkerCountdown(state.stalker)
+        return (
+          <div style={{
+            background: cd > 0 ? 'var(--tertiary-container)' : 'var(--error-container)',
+            color: cd > 0 ? 'var(--on-tertiary-container)' : '#fff',
+            borderRadius: '9999px', padding: '4px 12px', fontSize: '10px',
+            fontFamily: "var(--font-headline)", fontWeight: 700,
+            animation: cd === 0 ? 'none' : undefined,
+          }}>
+            {cd > 0
+              ? `\u{1F440} stalker in ${cd}s`
+              : '\u{1F47B} stalker is hunting you'}
+          </div>
+        )
+      })()}
 
       <div style={{ position: 'relative' }}>
         <canvas
