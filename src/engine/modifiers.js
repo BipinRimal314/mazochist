@@ -34,6 +34,7 @@ function applyModifierEffect(type, ball, grid, cellSize, now, setState) {
           fakeExitsCollected: collected,
           exitUnlocked: collected.size >= s.fakeExitsTotal,
           psycheUntil: Date.now() + 800,
+          deathsThisLevel: (s.deathsThisLevel || 0) + 1,
         }
       })
 

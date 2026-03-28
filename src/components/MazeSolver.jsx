@@ -79,11 +79,11 @@ function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDea
   const prevDeathsRef = useRef(0)
 
   useEffect(() => {
-    if (state.ball.deaths > prevDeathsRef.current) {
-      setState((s) => ({ ...s, lastQuip: DEATH_QUIPS[s.ball.deaths % DEATH_QUIPS.length] }))
-      prevDeathsRef.current = state.ball.deaths
+    if (state.deathsThisLevel > prevDeathsRef.current) {
+      setState((s) => ({ ...s, lastQuip: DEATH_QUIPS[s.deathsThisLevel % DEATH_QUIPS.length] }))
+      prevDeathsRef.current = state.deathsThisLevel
     }
-  }, [state.ball.deaths])
+  }, [state.deathsThisLevel])
 
   useEffect(() => {
     const keyMap = {
@@ -275,7 +275,7 @@ function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDea
 
   // VICTORY / SHAME SCREEN
   if (state.won) {
-    const { grade, label, color } = getGrade(state.ball.deaths, elapsed)
+    const { grade, label, color } = getGrade(state.deathsThisLevel, elapsed)
     return (
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -291,16 +291,16 @@ function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDea
         }}>
           <div style={{ padding: '32px', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>
-              {state.ball.deaths < 5 ? '\u{1F389}' : state.ball.deaths < 20 ? '\u{1F605}' : '\u{1F480}'}
+              {state.deathsThisLevel < 5 ? '\u{1F389}' : state.deathsThisLevel < 20 ? '\u{1F605}' : '\u{1F480}'}
             </div>
             <h2 style={{
               fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '24px',
               color: 'var(--primary)', lineHeight: 1.2, marginBottom: '4px',
             }}>
-              {state.ball.deaths < 5 ? 'you actually escaped!' : 'I barely survived a MAZOCHIST maze'}
+              {state.deathsThisLevel < 5 ? 'you actually escaped!' : 'I barely survived a MAZOCHIST maze'}
             </h2>
             <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>
-              {state.ball.deaths < 5 ? 'show-off.' : '"at least you didn\'t quit. yet."'}
+              {state.deathsThisLevel < 5 ? 'show-off.' : '"at least you didn\'t quit. yet."'}
             </p>
 
             {grid.hiddenWord && (
@@ -328,7 +328,7 @@ function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDea
                   deaths
                 </div>
                 <div style={{ fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '18px', color: 'var(--on-secondary-container)' }}>
-                  {state.ball.deaths}
+                  {state.deathsThisLevel}
                 </div>
               </div>
             </div>
@@ -425,8 +425,8 @@ function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDea
             setbacks
           </div>
           <div style={{ fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '24px', color: 'var(--primary)', marginTop: '2px' }}>
-            {state.ball.deaths}
-            {state.ball.deaths > 0 && (
+            {state.deathsThisLevel}
+            {state.deathsThisLevel > 0 && (
               <span style={{ fontSize: '12px', fontWeight: 500, marginLeft: '6px' }}>(ouch)</span>
             )}
           </div>
@@ -505,7 +505,7 @@ function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDea
         </div>
       )}
 
-      {state.lastQuip && state.ball.deaths > 0 && (
+      {state.lastQuip && state.deathsThisLevel > 0 && (
         <p style={{
           fontSize: '12px', color: 'var(--on-surface-variant)',
           fontStyle: 'italic', textAlign: 'center', maxWidth: '300px',
