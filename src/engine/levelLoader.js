@@ -86,7 +86,16 @@ async function loadAllLevels() {
     console.warn('Could not load RL levels:', e)
   }
 
-  return [...intro, ...evolved, ...rlPlaced]
+  let vaeCombined = []
+  try {
+    const vaeResp = await fetch('/levels/vae_rl_combined.json')
+    const vaeData = await vaeResp.json()
+    vaeCombined = loadMLLevels(vaeData, 'Neural', 4)
+  } catch (e) {
+    console.warn('Could not load VAE+RL levels:', e)
+  }
+
+  return [...intro, ...evolved, ...rlPlaced, ...vaeCombined]
 }
 
 export { loadAllLevels }

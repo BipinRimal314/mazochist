@@ -57,8 +57,9 @@ function LevelSelect({ onSelectLevel, onBuild, allLevels, loading }) {
 
   const chapterDescriptions = {
     1: '5 levels. learn the controls. enjoy it while it lasts.',
-    2: '50 mazes bred by genetic algorithm over 25,000 simulated playthroughs. sorted by cruelty.',
+    2: '12 mazes bred by genetic algorithm over 25,000 simulated playthroughs. sorted by cruelty.',
     3: '20 mazes where an RL agent learned to place traps for maximum suffering. it watched 10,000 simulated players die.',
+    4: '15 mazes dreamed by a neural network and armed by an RL agent. topology invented, not designed. 67% of simulated players couldn\'t finish these.',
   }
 
   return (
