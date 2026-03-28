@@ -5,6 +5,7 @@ import { createBallState, updateBall, checkModifierTrigger, checkWin, getAnimate
 import { applyModifierEffect, renderModifierOverlay } from '../engine/modifiers'
 import { playSound } from '../engine/sound'
 import { drawFog, drawCorruption, drawTrapFlash, spreadCorruption } from '../engine/fog'
+import { createSession, recordPosition, recordDeath, recordGatePass, endSession, saveSession } from '../engine/telemetry'
 
 const CELL_SIZE = 30
 
@@ -73,6 +74,7 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
   })
 
   const canvasRef = useRef(null)
+  const telemetryRef = useRef(createSession(levelNumber || 0, levelName || 'custom', levelEra || 'learning'))
   const inputRef = useRef({ up: false, down: false, left: false, right: false })
   const lastTriggerRef = useRef(null)
   const animFrameRef = useRef(null)
@@ -142,6 +144,7 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
         const trap = checkTrap(ball, ag, CELL_SIZE)
         if (trap) {
           playSound('death')
+          telemetryRef.current = recordDeath(telemetryRef.current, trap.cellX, trap.cellY, 'trap')
           const newDeaths = prev.deathsThisLevel + 1
           const deathMode = levelDeathMode || 'progress'
           const resetFakeExits = deathMode !== 'progress'
@@ -182,6 +185,7 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
               ...grid.cells[idx],
               gate: { ...grid.cells[idx].gate, open: false },
             }
+            telemetryRef.current = recordGatePass(telemetryRef.current)
             return { ...prev, ball, gateStates: newGates }
           }
         }
@@ -216,8 +220,14 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
 
         if (checkWin(ball, ag, CELL_SIZE) && prev.exitUnlocked) {
           playSound('victory')
+          telemetryRef.current = endSession(telemetryRef.current, true)
+          saveSession(telemetryRef.current)
           return { ...prev, ball, won: true }
         }
+
+        // record position for telemetry
+        telemetryRef.current = recordPosition(telemetryRef.current, ball.x / CELL_SIZE, ball.y / CELL_SIZE)
+
         return {
           ...prev, ball,
           visitedCells: newVisited,
@@ -263,7 +273,12 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
   const secs = elapsed % 60
   const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 
-  const goBack = onBack || (() => { window.location.hash = ''; window.location.reload() })
+  const goBack = () => {
+    telemetryRef.current = endSession(telemetryRef.current, false)
+    saveSession(telemetryRef.current)
+    if (onBack) onBack()
+    else { window.location.hash = ''; window.location.reload() }
+  }
 
   // VICTORY / SHAME SCREEN
   if (state.won) {
