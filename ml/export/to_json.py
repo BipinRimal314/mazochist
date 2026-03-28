@@ -4,6 +4,13 @@ import json
 from ..simulate.maze import Maze, TOP, RIGHT, BOTTOM, LEFT, WALL_NAMES
 
 
+def _to_native(val):
+    """Convert numpy types to native Python for JSON serialization."""
+    if hasattr(val, 'item'):
+        return val.item()
+    return val
+
+
 def maze_to_dict(maze: Maze, fog_radius=None, death_mode="progress", era="learning"):
     """Convert a Maze to the compact JSON format used by serialize.js."""
     data = []
@@ -33,12 +40,12 @@ def maze_to_dict(maze: Maze, fog_radius=None, death_mode="progress", era="learni
             data.append(entry)
 
     return {
-        "c": maze.cols,
-        "r": maze.rows,
-        "s": list(maze.start),
-        "e": list(maze.end),
+        "c": _to_native(maze.cols),
+        "r": _to_native(maze.rows),
+        "s": [_to_native(v) for v in maze.start],
+        "e": [_to_native(v) for v in maze.end],
         "w": "",
-        "d": data,
+        "d": [[_to_native(v) if v is not None else None for v in entry] for entry in data],
     }
 
 
