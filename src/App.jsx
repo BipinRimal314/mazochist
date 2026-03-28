@@ -56,6 +56,9 @@ function App() {
           key={currentLevel}
           levelGrid={ALL_LEVELS[currentLevel].grid}
           levelNumber={currentLevel}
+          levelEra={ALL_LEVELS[currentLevel].era}
+          levelFogRadius={ALL_LEVELS[currentLevel].fogRadius}
+          levelDeathMode={ALL_LEVELS[currentLevel].deathMode}
           onBack={handleBack}
           onNextLevel={currentLevel < ALL_LEVELS.length - 1 ? handleNextLevel : null}
         />
