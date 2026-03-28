@@ -15,10 +15,12 @@ function gridToJSON(grid) {
       (cell.walls.bottom ? 4 : 0) |
       (cell.walls.left ? 8 : 0)
 
-    if (wallBits === 0 && !cell.modifier) continue
+    if (wallBits === 0 && !cell.modifier && !cell.trap && !cell.gate) continue
 
     const entry = [cell.x, cell.y, wallBits]
-    if (cell.modifier) entry.push(cell.modifier)
+    entry.push(cell.modifier || null)
+    entry.push(cell.trap ? 1 : 0)
+    entry.push(cell.gate ? cell.gate.direction : null)
     compact.d.push(entry)
   }
 
@@ -38,18 +40,22 @@ function jsonToGrid(json) {
         y,
         walls: { top: false, right: false, bottom: false, left: false },
         modifier: null,
+        trap: false,
+        gate: null,
       })
     }
   }
 
   for (const entry of compact.d) {
-    const [x, y, wallBits, modifier] = entry
+    const [x, y, wallBits, modifier, trap, gateDir] = entry
     const cell = cells[y * cols + x]
     cell.walls.top = !!(wallBits & 1)
     cell.walls.right = !!(wallBits & 2)
     cell.walls.bottom = !!(wallBits & 4)
     cell.walls.left = !!(wallBits & 8)
     if (modifier) cell.modifier = modifier
+    if (trap) cell.trap = true
+    if (gateDir) cell.gate = { direction: gateDir, open: true }
   }
 
   return {

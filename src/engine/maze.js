@@ -9,6 +9,8 @@ function createGrid(cols = GRID_SIZE, rows = GRID_SIZE) {
         y,
         walls: { top: false, right: false, bottom: false, left: false },
         modifier: null,
+        trap: false,
+        gate: null,
       })
     }
   }
@@ -77,6 +79,20 @@ function setHiddenWord(grid, word) {
   return { ...grid, hiddenWord: word }
 }
 
+function setTrap(grid, x, y) {
+  const newCells = grid.cells.map((c) =>
+    c.x === x && c.y === y ? { ...c, trap: true } : c
+  )
+  return { ...grid, cells: newCells }
+}
+
+function setGate(grid, x, y, direction) {
+  const newCells = grid.cells.map((c) =>
+    c.x === x && c.y === y ? { ...c, gate: { direction, open: true } } : c
+  )
+  return { ...grid, cells: newCells }
+}
+
 export {
   GRID_SIZE,
   createGrid,
@@ -86,4 +102,6 @@ export {
   setStart,
   setEnd,
   setHiddenWord,
+  setTrap,
+  setGate,
 }
