@@ -342,7 +342,7 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
             fontSize: '10px', fontFamily: "var(--font-headline)", fontWeight: 700,
             pointerEvents: 'none',
           }}>
-            \u{1F500} reversed!
+{'\u{1F500}'} reversed!
           </div>
         )}
       </div>
