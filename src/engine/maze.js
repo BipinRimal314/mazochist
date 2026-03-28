@@ -11,6 +11,9 @@ function createGrid(cols = GRID_SIZE, rows = GRID_SIZE) {
         modifier: null,
         trap: false,
         gate: null,
+        liarWalls: null,    // { top: bool, right: bool, bottom: bool, left: bool } — visual lies
+        mimic: false,       // looks like exit but kills
+        memoryWipe: false,  // clears fog memory trail
       })
     }
   }
@@ -86,6 +89,27 @@ function setTrap(grid, x, y) {
   return { ...grid, cells: newCells }
 }
 
+function setLiarWalls(grid, x, y, liarWalls) {
+  const newCells = grid.cells.map((c) =>
+    c.x === x && c.y === y ? { ...c, liarWalls } : c
+  )
+  return { ...grid, cells: newCells }
+}
+
+function setMimic(grid, x, y) {
+  const newCells = grid.cells.map((c) =>
+    c.x === x && c.y === y ? { ...c, mimic: true } : c
+  )
+  return { ...grid, cells: newCells }
+}
+
+function setMemoryWipe(grid, x, y) {
+  const newCells = grid.cells.map((c) =>
+    c.x === x && c.y === y ? { ...c, memoryWipe: true } : c
+  )
+  return { ...grid, cells: newCells }
+}
+
 function setGate(grid, x, y, direction) {
   const newCells = grid.cells.map((c) =>
     c.x === x && c.y === y ? { ...c, gate: { direction, open: true } } : c
@@ -104,4 +128,7 @@ export {
   setHiddenWord,
   setTrap,
   setGate,
+  setLiarWalls,
+  setMimic,
+  setMemoryWipe,
 }

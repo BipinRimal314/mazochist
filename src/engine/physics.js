@@ -221,8 +221,18 @@ function checkTrap(ball, grid, cellSize) {
   const cellX = Math.floor(ball.x / cellSize)
   const cellY = Math.floor(ball.y / cellSize)
   const cell = getCell(grid, cellX, cellY)
-  if (!cell || !cell.trap) return null
-  return { cellX, cellY }
+  if (!cell) return null
+  if (cell.trap) return { cellX, cellY, type: 'trap' }
+  if (cell.mimic) return { cellX, cellY, type: 'mimic' }
+  return null
+}
+
+function checkMemoryWipe(ball, grid, cellSize) {
+  const cellX = Math.floor(ball.x / cellSize)
+  const cellY = Math.floor(ball.y / cellSize)
+  const cell = getCell(grid, cellX, cellY)
+  if (!cell || !cell.memoryWipe) return false
+  return true
 }
 
 function checkWin(ball, grid, cellSize) {
@@ -266,4 +276,4 @@ function getAnimatedGrid(grid, now) {
   return { ...grid, cells: newCells }
 }
 
-export { createBallState, updateBall, checkModifierTrigger, checkWin, resetBall, getAnimatedGrid, checkTrap }
+export { createBallState, updateBall, checkModifierTrigger, checkWin, resetBall, getAnimatedGrid, checkTrap, checkMemoryWipe }

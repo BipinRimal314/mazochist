@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { decodeFromHash } from '../utils/serialize'
 import { drawMaze, drawBall } from '../engine/renderer'
-import { createBallState, updateBall, checkModifierTrigger, checkWin, getAnimatedGrid, checkTrap } from '../engine/physics'
+import { createBallState, updateBall, checkModifierTrigger, checkWin, getAnimatedGrid, checkTrap, checkMemoryWipe } from '../engine/physics'
 import { applyModifierEffect, renderModifierOverlay } from '../engine/modifiers'
 import { playSound } from '../engine/sound'
 import { drawFog, drawCorruption, drawTrapFlash, spreadCorruption } from '../engine/fog'
@@ -144,7 +144,7 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
         const trap = checkTrap(ball, ag, CELL_SIZE)
         if (trap) {
           playSound('death')
-          telemetryRef.current = recordDeath(telemetryRef.current, trap.cellX, trap.cellY, 'trap')
+          telemetryRef.current = recordDeath(telemetryRef.current, trap.cellX, trap.cellY, trap.type)
           const newDeaths = prev.deathsThisLevel + 1
           const deathMode = levelDeathMode || 'progress'
           const resetFakeExits = deathMode !== 'progress'
@@ -187,6 +187,19 @@ function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadiu
             }
             telemetryRef.current = recordGatePass(telemetryRef.current)
             return { ...prev, ball, gateStates: newGates }
+          }
+        }
+
+        // memory wipe — clears fog memory trail
+        if (checkMemoryWipe(ball, ag, CELL_SIZE)) {
+          const wipeKey = `${ballCellX},${ballCellY}`
+          if (!prev.lastWipeCell || prev.lastWipeCell !== wipeKey) {
+            return {
+              ...prev, ball,
+              visitedCells: new Set(),
+              lastWipeCell: wipeKey,
+              lastQuip: 'your memory has been wiped.',
+            }
           }
         }
 

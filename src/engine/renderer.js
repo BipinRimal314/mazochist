@@ -113,6 +113,33 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
     ctx.fill()
   }
 
+  // mimic tiles — look identical to the real exit
+  for (const cell of grid.cells) {
+    if (!cell.mimic) continue
+    ctx.fillStyle = COLORS.end
+    roundRect(ctx, cell.x * cellSize + 3, cell.y * cellSize + 3, cellSize - 6, cellSize - 6, 5)
+    ctx.fill()
+    // flag icon (same as real exit)
+    ctx.fillStyle = '#ffffff'
+    const mfx = cell.x * cellSize + cellSize * 0.35
+    const mfy = cell.y * cellSize + cellSize * 0.25
+    ctx.fillRect(mfx, mfy, 2, cellSize * 0.5)
+    ctx.beginPath()
+    ctx.moveTo(mfx + 2, mfy)
+    ctx.lineTo(mfx + cellSize * 0.35, mfy + cellSize * 0.12)
+    ctx.lineTo(mfx + 2, mfy + cellSize * 0.25)
+    ctx.closePath()
+    ctx.fill()
+  }
+
+  // memory wipe zones — subtle shimmer
+  for (const cell of grid.cells) {
+    if (!cell.memoryWipe) continue
+    ctx.fillStyle = 'rgba(184, 169, 212, 0.15)'
+    roundRect(ctx, cell.x * cellSize + 1, cell.y * cellSize + 1, cellSize - 2, cellSize - 2, 4)
+    ctx.fill()
+  }
+
   // modifiers
   if (showModifiers) {
     for (const cell of grid.cells) {
@@ -164,23 +191,34 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
     }
   }
 
-  // walls — deep plum, rounded caps, slightly thicker
-  ctx.strokeStyle = COLORS.wall
+  // walls — deep plum, rounded caps
+  // liar walls: visually show walls that don't exist, hide walls that do
   ctx.lineWidth = 2.5
   ctx.lineCap = 'round'
   for (const cell of grid.cells) {
     const cx = cell.x * cellSize
     const cy = cell.y * cellSize
-    if (cell.walls.top) {
+    const liar = cell.liarWalls
+
+    // what to DRAW (visual): real walls XOR liar overrides
+    // if liar says top=true, draw top even if real wall is false (fake wall)
+    // if liar says top=false (or undefined), draw real wall
+    const drawTop = liar ? (liar.top !== undefined ? liar.top : cell.walls.top) : cell.walls.top
+    const drawRight = liar ? (liar.right !== undefined ? liar.right : cell.walls.right) : cell.walls.right
+    const drawBottom = liar ? (liar.bottom !== undefined ? liar.bottom : cell.walls.bottom) : cell.walls.bottom
+    const drawLeft = liar ? (liar.left !== undefined ? liar.left : cell.walls.left) : cell.walls.left
+
+    ctx.strokeStyle = COLORS.wall
+    if (drawTop) {
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + cellSize, cy); ctx.stroke()
     }
-    if (cell.walls.right) {
+    if (drawRight) {
       ctx.beginPath(); ctx.moveTo(cx + cellSize, cy); ctx.lineTo(cx + cellSize, cy + cellSize); ctx.stroke()
     }
-    if (cell.walls.bottom) {
+    if (drawBottom) {
       ctx.beginPath(); ctx.moveTo(cx, cy + cellSize); ctx.lineTo(cx + cellSize, cy + cellSize); ctx.stroke()
     }
-    if (cell.walls.left) {
+    if (drawLeft) {
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + cellSize); ctx.stroke()
     }
   }
