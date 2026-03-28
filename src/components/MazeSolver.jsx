@@ -37,7 +37,7 @@ function getGrade(deaths, seconds) {
   return { grade: 'E-', label: 'Legendary suffering.', color: 'var(--error-container)' }
 }
 
-function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDeathMode, onBack, onNextLevel }) {
+function MazeSolver({ levelGrid, levelNumber, levelName, levelEra, levelFogRadius, levelDeathMode, onBack, onNextLevel }) {
   const [grid] = useState(() => {
     if (levelGrid) return levelGrid
     return decodeFromHash(window.location.hash.slice(1))
@@ -176,19 +176,11 @@ function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDea
           if (!prev.gateStates.has(gateKey)) {
             const newGates = new Map(prev.gateStates)
             newGates.set(gateKey, true)
-            // close gate in the actual grid (mutate — gates are per-attempt state)
-            const gDir = currentCell.gate.direction
+            // mark gate as closed — physics handles blocking, don't mutate walls
             const idx = ballCellY * grid.cols + ballCellX
             grid.cells[idx] = {
               ...grid.cells[idx],
               gate: { ...grid.cells[idx].gate, open: false },
-              walls: {
-                ...grid.cells[idx].walls,
-                ...(gDir === 'right' ? { left: true } : {}),
-                ...(gDir === 'left' ? { right: true } : {}),
-                ...(gDir === 'down' ? { top: true } : {}),
-                ...(gDir === 'up' ? { bottom: true } : {}),
-              },
             }
             return { ...prev, ball, gateStates: newGates }
           }
@@ -391,12 +383,20 @@ function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDea
       gap: '16px', padding: '20px', fontFamily: "var(--font-body)",
     }}>
       {levelNumber != null && (
-        <div style={{
-          background: 'var(--primary-container)', color: 'var(--primary-dim)',
-          padding: '6px 16px', borderRadius: '9999px', fontSize: '12px',
-          fontFamily: "var(--font-headline)", fontWeight: 700,
-        }}>
-          someone made this for you {'\u{1F496}'}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <div style={{
+            fontFamily: "var(--font-headline)", fontWeight: 800,
+            fontSize: '14px', color: 'var(--primary)', letterSpacing: '-0.5px',
+          }}>
+            level {levelNumber + 1}{levelName ? `: ${levelName}` : ''}
+          </div>
+          <div style={{
+            background: 'var(--primary-container)', color: 'var(--primary-dim)',
+            padding: '4px 12px', borderRadius: '9999px', fontSize: '10px',
+            fontFamily: "var(--font-headline)", fontWeight: 600,
+          }}>
+            {levelEra === 'sadistic' ? 'good luck' : levelEra === 'punishing' ? 'careful now' : 'you got this'} {'\u{1F496}'}
+          </div>
         </div>
       )}
 

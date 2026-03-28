@@ -56,6 +56,7 @@ function App() {
           key={currentLevel}
           levelGrid={ALL_LEVELS[currentLevel].grid}
           levelNumber={currentLevel}
+          levelName={ALL_LEVELS[currentLevel].name}
           levelEra={ALL_LEVELS[currentLevel].era}
           levelFogRadius={ALL_LEVELS[currentLevel].fogRadius}
           levelDeathMode={ALL_LEVELS[currentLevel].deathMode}
