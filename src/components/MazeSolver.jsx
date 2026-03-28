@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { decodeFromHash } from '../utils/serialize'
 import { drawMaze, drawBall } from '../engine/renderer'
-import { createBallState, updateBall, checkModifierTrigger, checkWin, getAnimatedGrid } from '../engine/physics'
+import { createBallState, updateBall, checkModifierTrigger, checkWin, getAnimatedGrid, checkTrap } from '../engine/physics'
 import { applyModifierEffect, renderModifierOverlay } from '../engine/modifiers'
 import { playSound } from '../engine/sound'
+import { drawFog, drawCorruption, drawTrapFlash, spreadCorruption } from '../engine/fog'
 
 const CELL_SIZE = 30
 
@@ -36,7 +37,7 @@ function getGrade(deaths, seconds) {
   return { grade: 'E-', label: 'Legendary suffering.', color: 'var(--error-container)' }
 }
 
-function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
+function MazeSolver({ levelGrid, levelNumber, levelEra, levelFogRadius, levelDeathMode, onBack, onNextLevel }) {
   const [grid] = useState(() => {
     if (levelGrid) return levelGrid
     return decodeFromHash(window.location.hash.slice(1))
@@ -44,6 +45,9 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
 
   const [state, setState] = useState(() => {
     const fakeExits = grid.cells.filter((c) => c.modifier === 'fakeExit').map((c) => `${c.x},${c.y}`)
+    const eraType = levelEra || 'learning'
+    const baseFogRadius = levelFogRadius || null
+
     return {
       ball: createBallState(grid, CELL_SIZE),
       startTime: Date.now(),
@@ -53,6 +57,18 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
       fakeExitsCollected: new Set(),
       exitUnlocked: fakeExits.length === 0,
       lastQuip: '',
+      eraType,
+      baseFogRadius,
+      fogRadius: baseFogRadius,
+      visitedCells: new Set(),
+      trapFlashPos: null,
+      trapFlashUntil: 0,
+      gateStates: new Map(),
+      corruptedCells: new Set(),
+      corruptionFrontier: [],
+      lastCorruptionTick: 0,
+      deathsThisLevel: 0,
+      corruptionActive: false,
     }
   })
 
@@ -121,11 +137,102 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
           lastTriggerRef.current = tk
         }
         if (!trigger) lastTriggerRef.current = null
+
+        // trap check — invisible death tiles
+        const trap = checkTrap(ball, ag, CELL_SIZE)
+        if (trap) {
+          playSound('death')
+          const newDeaths = prev.deathsThisLevel + 1
+          const deathMode = levelDeathMode || 'progress'
+          const resetFakeExits = deathMode !== 'progress'
+          const fogShrink = prev.eraType === 'sadistic' && newDeaths > 3
+            ? Math.max((prev.baseFogRadius || 2.5) - (newDeaths - 3) * 0.5, 1.0)
+            : prev.fogRadius
+          const corruptionActive = prev.eraType === 'sadistic' && newDeaths >= 10
+
+          return {
+            ...prev,
+            ball: createBallState(grid, CELL_SIZE),
+            trapFlashPos: { x: trap.cellX, y: trap.cellY },
+            trapFlashUntil: now + 500,
+            deathsThisLevel: newDeaths,
+            fogRadius: fogShrink,
+            corruptionActive,
+            corruptionFrontier: corruptionActive && prev.corruptionFrontier.length === 0
+              ? [{ x: grid.start.x, y: grid.start.y }] : prev.corruptionFrontier,
+            lastCorruptionTick: corruptionActive && !prev.corruptionActive ? now : prev.lastCorruptionTick,
+            fakeExitsCollected: resetFakeExits ? new Set() : prev.fakeExitsCollected,
+            exitUnlocked: resetFakeExits ? prev.fakeExitsTotal === 0 : prev.exitUnlocked,
+            lastQuip: DEATH_QUIPS[newDeaths % DEATH_QUIPS.length],
+          }
+        }
+
+        // gate check — close behind the ball
+        const ballCellX = Math.floor(ball.x / CELL_SIZE)
+        const ballCellY = Math.floor(ball.y / CELL_SIZE)
+        const currentCell = ag.cells[ballCellY * ag.cols + ballCellX]
+        if (currentCell && currentCell.gate && currentCell.gate.open) {
+          const gateKey = `${ballCellX},${ballCellY}`
+          if (!prev.gateStates.has(gateKey)) {
+            const newGates = new Map(prev.gateStates)
+            newGates.set(gateKey, true)
+            // close gate in the actual grid (mutate — gates are per-attempt state)
+            const gDir = currentCell.gate.direction
+            const idx = ballCellY * grid.cols + ballCellX
+            grid.cells[idx] = {
+              ...grid.cells[idx],
+              gate: { ...grid.cells[idx].gate, open: false },
+              walls: {
+                ...grid.cells[idx].walls,
+                ...(gDir === 'right' ? { left: true } : {}),
+                ...(gDir === 'left' ? { right: true } : {}),
+                ...(gDir === 'down' ? { top: true } : {}),
+                ...(gDir === 'up' ? { bottom: true } : {}),
+              },
+            }
+            return { ...prev, ball, gateStates: newGates }
+          }
+        }
+
+        // track visited cells for fog memory trail
+        const visitedKey = `${ballCellX},${ballCellY}`
+        let newVisited = prev.visitedCells
+        if (!prev.visitedCells.has(visitedKey)) {
+          newVisited = new Set(prev.visitedCells)
+          newVisited.add(visitedKey)
+        }
+
+        // corruption spread (sadistic era, 10+ deaths)
+        let corruption = { corruptedCells: prev.corruptedCells, frontier: prev.corruptionFrontier }
+        let corruptionTick = prev.lastCorruptionTick
+        if (prev.corruptionActive && now - prev.lastCorruptionTick > 10000) {
+          corruption = spreadCorruption(prev.corruptedCells, prev.corruptionFrontier, grid)
+          corruptionTick = now
+          // death if ball is in corrupted cell
+          if (corruption.corruptedCells.has(visitedKey)) {
+            return {
+              ...prev,
+              ball: createBallState(grid, CELL_SIZE),
+              deathsThisLevel: prev.deathsThisLevel + 1,
+              corruptedCells: corruption.corruptedCells,
+              corruptionFrontier: corruption.frontier,
+              lastCorruptionTick: now,
+              lastQuip: 'the void consumed you.',
+            }
+          }
+        }
+
         if (checkWin(ball, ag, CELL_SIZE) && prev.exitUnlocked) {
           playSound('victory')
           return { ...prev, ball, won: true }
         }
-        return { ...prev, ball }
+        return {
+          ...prev, ball,
+          visitedCells: newVisited,
+          corruptedCells: corruption.corruptedCells,
+          corruptionFrontier: corruption.frontier,
+          lastCorruptionTick: corruptionTick,
+        }
       })
       animFrameRef.current = requestAnimationFrame(loop)
     }
@@ -144,7 +251,20 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
     const trigger = checkModifierTrigger(state.ball, ag, CELL_SIZE)
     if (trigger) renderModifierOverlay(ctx, trigger.type, state.ball, ag, CELL_SIZE, Date.now())
     drawBall(ctx, state.ball.x, state.ball.y, state.ball.radius)
-  }, [state.ball, grid])
+
+    // fog of war
+    if (state.fogRadius !== null) {
+      drawFog(ctx, grid, CELL_SIZE, state.ball.x, state.ball.y, state.fogRadius, state.visitedCells)
+    }
+
+    // corruption overlay
+    drawCorruption(ctx, grid, CELL_SIZE, state.corruptedCells, Date.now())
+
+    // trap flash (above fog so player sees where they died)
+    if (state.trapFlashPos && Date.now() < state.trapFlashUntil) {
+      drawTrapFlash(ctx, CELL_SIZE, state.trapFlashPos.x, state.trapFlashPos.y)
+    }
+  }, [state.ball, state.fogRadius, state.corruptedCells, state.trapFlashPos, grid])
 
   const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
   const mins = Math.floor(elapsed / 60)
@@ -322,6 +442,30 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
           transition: 'all 0.3s ease',
         }}>
           {state.exitUnlocked ? '\u{2705} exit unlocked!' : `\u{1F512} ${state.fakeExitsCollected.size}/${state.fakeExitsTotal} found`}
+        </div>
+      )}
+
+      {state.eraType === 'sadistic' && state.deathsThisLevel >= 4 && (
+        <div style={{
+          background: 'var(--error-container)', color: '#fff',
+          borderRadius: '9999px', padding: '4px 12px', fontSize: '10px',
+          fontFamily: "var(--font-headline)", fontWeight: 700,
+        }}>
+          {state.deathsThisLevel >= 10
+            ? '\u{1F525} void spreading'
+            : state.deathsThisLevel >= 7
+            ? `\u{26A0}\u{FE0F} +${(state.deathsThisLevel - 6) * 2} traps added`
+            : '\u{1F441}\u{FE0F} fog shrinking'}
+        </div>
+      )}
+
+      {state.fogRadius !== null && (
+        <div style={{
+          background: 'var(--surface-container)', color: 'var(--on-surface-variant)',
+          borderRadius: '9999px', padding: '4px 12px', fontSize: '10px',
+          fontFamily: "var(--font-headline)", fontWeight: 600,
+        }}>
+          {'\u{1F32B}\u{FE0F}'} fog active
         </div>
       )}
 
