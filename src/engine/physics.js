@@ -158,6 +158,15 @@ function resolveCollisions(x, y, radius, grid, cellSize) {
       hitY = true
     }
 
+    // closed gate acts as wall in blocked direction
+    if (cell.gate && !cell.gate.open) {
+      const gd = cell.gate.direction
+      if (gd === 'right' && x - radius < left) { x = left + radius; hitX = true }
+      if (gd === 'left' && x + radius > right) { x = right - radius; hitX = true }
+      if (gd === 'down' && y - radius < top) { y = top + radius; hitY = true }
+      if (gd === 'up' && y + radius > bottom) { y = bottom - radius; hitY = true }
+    }
+
     // also check the cell the ball edge is reaching into
     // (handles case where ball center is near a cell boundary)
     const edgeRightCell = getCell(grid, Math.floor((x + radius) / cellSize), cy)
@@ -208,6 +217,14 @@ function checkModifierTrigger(ball, grid, cellSize) {
   return { type: cell.modifier, cellX, cellY }
 }
 
+function checkTrap(ball, grid, cellSize) {
+  const cellX = Math.floor(ball.x / cellSize)
+  const cellY = Math.floor(ball.y / cellSize)
+  const cell = getCell(grid, cellX, cellY)
+  if (!cell || !cell.trap) return null
+  return { cellX, cellY }
+}
+
 function checkWin(ball, grid, cellSize) {
   const cellX = Math.floor(ball.x / cellSize)
   const cellY = Math.floor(ball.y / cellSize)
@@ -249,4 +266,4 @@ function getAnimatedGrid(grid, now) {
   return { ...grid, cells: newCells }
 }
 
-export { createBallState, updateBall, checkModifierTrigger, checkWin, resetBall, getAnimatedGrid }
+export { createBallState, updateBall, checkModifierTrigger, checkWin, resetBall, getAnimatedGrid, checkTrap }
