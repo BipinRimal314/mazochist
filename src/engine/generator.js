@@ -1,4 +1,4 @@
-import { createGrid, setModifier, setStart, setEnd, setHiddenWord, getCell } from './maze'
+import { createGrid, setModifier, setStart, setEnd, setHiddenWord, getCell, toggleWallBetween, setTrap, setGate } from './maze'
 
 // seeded PRNG for deterministic level generation
 function mulberry32(seed) {
@@ -110,6 +110,190 @@ function solveMaze(grid) {
   }
 
   return []
+}
+
+// era configuration — determines difficulty parameters per level
+function getEraConfig(levelNumber) {
+  if (levelNumber <= 30) {
+    return {
+      era: 'learning',
+      loopPercent: 0.05,
+      deadEndMax: 3 + Math.floor((levelNumber - 1) / 10) * 2,
+      trapCount: 0,
+      gateCount: 0,
+      fogRadius: null,
+      deathMode: 'progress',
+    }
+  }
+  if (levelNumber <= 60) {
+    const idx = levelNumber - 31
+    return {
+      era: 'punishing',
+      loopPercent: 0.08 + idx * 0.001,
+      deadEndMax: 8 + Math.floor(idx / 5),
+      trapCount: 2 + Math.floor(idx / 8),
+      gateCount: 1 + Math.floor(idx / 10),
+      fogRadius: 4,
+      deathMode: 'full',
+    }
+  }
+  const idx = levelNumber - 61
+  return {
+    era: 'sadistic',
+    loopPercent: 0.12 + idx * 0.001,
+    deadEndMax: 12 + Math.floor(idx / 4),
+    trapCount: 5 + Math.floor(idx / 5),
+    gateCount: 3 + Math.floor(idx / 8),
+    fogRadius: 2.5,
+    deathMode: 'cumulative',
+  }
+}
+
+// add loops by removing random interior walls — creates alternate (mostly wrong) routes
+function addLoops(grid, rng, percentage) {
+  const interiorWalls = []
+  for (const cell of grid.cells) {
+    const { x, y } = cell
+    if (cell.walls.right && x < grid.cols - 1) {
+      interiorWalls.push({ x1: x, y1: y, x2: x + 1, y2: y })
+    }
+    if (cell.walls.bottom && y < grid.rows - 1) {
+      interiorWalls.push({ x1: x, y1: y, x2: x, y2: y + 1 })
+    }
+  }
+
+  for (let i = interiorWalls.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [interiorWalls[i], interiorWalls[j]] = [interiorWalls[j], interiorWalls[i]]
+  }
+
+  const toRemove = Math.floor(interiorWalls.length * percentage)
+  for (let i = 0; i < toRemove; i++) {
+    const w = interiorWalls[i]
+    grid = toggleWallBetween(grid, w.x1, w.y1, w.x2, w.y2)
+  }
+
+  return grid
+}
+
+// extend dead ends deeper — biased toward the exit direction for maximum seduction
+function extendDeadEnds(grid, rng, maxExtension, solutionPath) {
+  const pathSet = new Set(solutionPath.map((p) => `${p.x},${p.y}`))
+
+  const deadEnds = grid.cells.filter((c) => {
+    const wallCount = [c.walls.top, c.walls.right, c.walls.bottom, c.walls.left].filter(Boolean).length
+    return wallCount === 3 && !pathSet.has(`${c.x},${c.y}`)
+  })
+
+  for (const de of deadEnds) {
+    if (rng() > 0.6) continue
+
+    let cx = de.x
+    let cy = de.y
+    const extended = new Set([`${cx},${cy}`])
+
+    for (let step = 0; step < maxExtension; step++) {
+      const dirs = [
+        { dx: 0, dy: -1, wall: 'top', opp: 'bottom' },
+        { dx: 1, dy: 0, wall: 'right', opp: 'left' },
+        { dx: 0, dy: 1, wall: 'bottom', opp: 'top' },
+        { dx: -1, dy: 0, wall: 'left', opp: 'right' },
+      ].filter((d) => {
+        const nx = cx + d.dx
+        const ny = cy + d.dy
+        const key = `${nx},${ny}`
+        if (nx < 0 || nx >= grid.cols || ny < 0 || ny >= grid.rows) return false
+        if (pathSet.has(key)) return false
+        if (extended.has(key)) return false
+        const neighbor = getCell(grid, nx, ny)
+        const nWalls = [neighbor.walls.top, neighbor.walls.right, neighbor.walls.bottom, neighbor.walls.left].filter(Boolean).length
+        return nWalls === 4
+      })
+
+      if (dirs.length === 0) break
+
+      const towardExit = dirs.filter((d) => {
+        const nx = cx + d.dx
+        const ny = cy + d.dy
+        const distNow = Math.abs(cx - grid.end.x) + Math.abs(cy - grid.end.y)
+        const distNext = Math.abs(nx - grid.end.x) + Math.abs(ny - grid.end.y)
+        return distNext < distNow
+      })
+
+      const chosen = towardExit.length > 0 && rng() < 0.7
+        ? towardExit[Math.floor(rng() * towardExit.length)]
+        : dirs[Math.floor(rng() * dirs.length)]
+
+      grid = toggleWallBetween(grid, cx, cy, cx + chosen.dx, cy + chosen.dy)
+      cx = cx + chosen.dx
+      cy = cy + chosen.dy
+      extended.add(`${cx},${cy}`)
+    }
+  }
+
+  return grid
+}
+
+// place traps on tempting wrong paths — never on solution
+function placeTraps(grid, solutionPath, count, rng) {
+  const pathSet = new Set(solutionPath.map((p) => `${p.x},${p.y}`))
+
+  const candidates = grid.cells.filter((c) => {
+    if (pathSet.has(`${c.x},${c.y}`)) return false
+    if (c.x === grid.start.x && c.y === grid.start.y) return false
+    if (c.x === grid.end.x && c.y === grid.end.y) return false
+    if (c.trap || c.modifier) return false
+    const wallCount = [c.walls.top, c.walls.right, c.walls.bottom, c.walls.left].filter(Boolean).length
+    return wallCount < 4
+  })
+
+  candidates.sort((a, b) => {
+    const aDist = Math.min(...solutionPath.map((p) => Math.abs(p.x - a.x) + Math.abs(p.y - a.y)))
+    const bDist = Math.min(...solutionPath.map((p) => Math.abs(p.x - b.x) + Math.abs(p.y - b.y)))
+    return aDist - bDist
+  })
+
+  const placed = Math.min(count, candidates.length)
+  for (let i = 0; i < placed; i++) {
+    grid = setTrap(grid, candidates[i].x, candidates[i].y)
+  }
+
+  return grid
+}
+
+// place one-way gates on the solution path — forces commitment
+function placeGates(grid, solutionPath, count, rng) {
+  const gateCandidates = []
+  for (let i = 2; i < solutionPath.length - 2; i++) {
+    const prev = solutionPath[i - 1]
+    const curr = solutionPath[i]
+    const dx = curr.x - prev.x
+    const dy = curr.y - prev.y
+    let direction = null
+    if (dx === 1) direction = 'right'
+    if (dx === -1) direction = 'left'
+    if (dy === 1) direction = 'down'
+    if (dy === -1) direction = 'up'
+    if (direction) {
+      gateCandidates.push({ x: curr.x, y: curr.y, direction, pathIndex: i })
+    }
+  }
+
+  for (let i = gateCandidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [gateCandidates[i], gateCandidates[j]] = [gateCandidates[j], gateCandidates[i]]
+  }
+
+  const placed = []
+  for (const cand of gateCandidates) {
+    if (placed.length >= count) break
+    const tooClose = placed.some((p) => Math.abs(p.pathIndex - cand.pathIndex) < 5)
+    if (tooClose) continue
+    grid = setGate(grid, cand.x, cand.y, cand.direction)
+    placed.push(cand)
+  }
+
+  return grid
 }
 
 // identify which cells on the solution path are turns vs straight segments
@@ -377,6 +561,8 @@ function generateLevel(levelNumber) {
   }
   const size = sizeMap[chapter] || 10
 
+  const era = getEraConfig(levelNumber)
+
   // generate base maze
   let grid = generateMaze(size, size, seed)
 
@@ -389,8 +575,21 @@ function generateLevel(levelNumber) {
   grid = setEnd(grid, endX, endY)
   grid = setHiddenWord(grid, word)
 
-  // find solution for modifier placement
-  const solution = solveMaze(grid)
+  // make maze imperfect — add loops and extend dead ends
+  let solution = solveMaze(grid)
+  grid = addLoops(grid, rng, era.loopPercent)
+  grid = extendDeadEnds(grid, rng, era.deadEndMax, solution)
+  solution = solveMaze(grid) // re-solve after modifications
+
+  // place traps on tempting wrong paths
+  if (era.trapCount > 0) {
+    grid = placeTraps(grid, solution, era.trapCount, rng)
+  }
+
+  // place one-way gates on solution path
+  if (era.gateCount > 0) {
+    grid = placeGates(grid, solution, era.gateCount, rng)
+  }
 
   // difficulty scaling
   const modCountBase = 3 + indexInChapter
@@ -498,7 +697,10 @@ function generateLevel(levelNumber) {
     chapter: chapterName,
     chapterNumber: chapter,
     grid,
+    era: era.era,
+    fogRadius: era.fogRadius,
+    deathMode: era.deathMode,
   }
 }
 
-export { generateLevel, CHAPTER_NAMES }
+export { generateLevel, CHAPTER_NAMES, getEraConfig }
