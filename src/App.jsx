@@ -1,15 +1,27 @@
 import { useState, useEffect } from 'react'
-import LevelSelect, { ALL_LEVELS } from './components/LevelSelect'
+import LevelSelect from './components/LevelSelect'
 import MazeBuilder from './components/MazeBuilder'
 import MazeSolver from './components/MazeSolver'
+import { loadAllLevels } from './engine/levelLoader'
 
 function App() {
   const [mode, setMode] = useState('levels')
   const [currentLevel, setCurrentLevel] = useState(null)
+  const [allLevels, setAllLevels] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const hash = window.location.hash.slice(1)
-    if (hash) setMode('shared')
+    if (hash) {
+      setMode('shared')
+      setLoading(false)
+      return
+    }
+
+    loadAllLevels().then((levels) => {
+      setAllLevels(levels)
+      setLoading(false)
+    })
   }, [])
 
   useEffect(() => {
@@ -26,7 +38,7 @@ function App() {
   }
 
   const handleNextLevel = () => {
-    if (currentLevel != null && currentLevel < ALL_LEVELS.length - 1) {
+    if (currentLevel != null && currentLevel < allLevels.length - 1) {
       const next = currentLevel + 1
       setCurrentLevel(next)
       setMode('levels')
@@ -41,27 +53,31 @@ function App() {
     setMode('levels')
   }
 
+  const level = currentLevel != null ? allLevels[currentLevel] : null
+
   return (
     <div style={{ width: '100vw', minHeight: '100vh' }}>
       {mode === 'levels' && (
         <LevelSelect
           onSelectLevel={handleSelectLevel}
           onBuild={() => setMode('build')}
+          allLevels={allLevels}
+          loading={loading}
         />
       )}
       {mode === 'build' && <MazeBuilder />}
       {mode === 'shared' && <MazeSolver />}
-      {mode === 'playing' && currentLevel != null && (
+      {mode === 'playing' && level && (
         <MazeSolver
           key={currentLevel}
-          levelGrid={ALL_LEVELS[currentLevel].grid}
+          levelGrid={level.grid}
           levelNumber={currentLevel}
-          levelName={ALL_LEVELS[currentLevel].name}
-          levelEra={ALL_LEVELS[currentLevel].era}
-          levelFogRadius={ALL_LEVELS[currentLevel].fogRadius}
-          levelDeathMode={ALL_LEVELS[currentLevel].deathMode}
+          levelName={level.name}
+          levelEra={level.era}
+          levelFogRadius={level.fogRadius}
+          levelDeathMode={level.deathMode}
           onBack={handleBack}
-          onNextLevel={currentLevel < ALL_LEVELS.length - 1 ? handleNextLevel : null}
+          onNextLevel={currentLevel < allLevels.length - 1 ? handleNextLevel : null}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
-import { LEVELS } from '../engine/levels'
-import { generateLevel } from '../engine/generator'
+import { useState, useEffect } from 'react'
+import { loadAllLevels } from '../engine/levelLoader'
 
 const MODIFIER_TAGS = {
   ice: '\u{2744}\u{FE0F}', reverse: '\u{1F500}', blackout: '\u{1F311}',
@@ -16,25 +16,37 @@ function getModifiersInGrid(grid) {
   return [...mods]
 }
 
-function getAllLevels() {
-  const all = []
-  for (let i = 0; i < LEVELS.length; i++) {
-    all.push({ ...LEVELS[i], chapter: 'Baby Steps', chapterNumber: 1 })
+function getObstacleCount(grid) {
+  let traps = 0, gates = 0, fakes = 0
+  for (const cell of grid.cells) {
+    if (cell.trap) traps++
+    if (cell.gate) gates++
+    if (cell.modifier === 'fakeExit') fakes++
   }
-  for (let i = 11; i <= 100; i++) {
-    all.push(generateLevel(i))
-  }
-  return all
+  return { traps, gates, fakes }
 }
 
-const ALL_LEVELS = getAllLevels()
+function LevelSelect({ onSelectLevel, onBuild, allLevels, loading }) {
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', minHeight: '100vh', fontFamily: 'var(--font-headline)',
+      }}>
+        <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--primary)', marginBottom: '12px' }}>
+          mazochist
+        </div>
+        <div style={{ fontSize: '14px', color: 'var(--on-surface-variant)' }}>
+          loading suffering...
+        </div>
+      </div>
+    )
+  }
 
-function LevelSelect({ onSelectLevel, onBuild }) {
   const chapters = []
   let currentChapter = null
-
-  for (let i = 0; i < ALL_LEVELS.length; i++) {
-    const level = ALL_LEVELS[i]
+  for (let i = 0; i < allLevels.length; i++) {
+    const level = allLevels[i]
     const cn = level.chapterNumber
     if (cn !== currentChapter) {
       chapters.push({ number: cn, name: level.chapter, levels: [] })
@@ -43,172 +55,154 @@ function LevelSelect({ onSelectLevel, onBuild }) {
     chapters[chapters.length - 1].levels.push({ ...level, index: i })
   }
 
-  const s = {
-    page: {
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      minHeight: '100vh', padding: '0 20px 80px',
-      fontFamily: "var(--font-body)",
-    },
-    hero: {
-      textAlign: 'center', padding: '60px 0 40px', maxWidth: '480px',
-    },
-    title: {
-      fontFamily: "var(--font-headline)", fontWeight: 800,
-      fontSize: 'clamp(48px, 12vw, 80px)', color: 'var(--primary)',
-      letterSpacing: '-2px', lineHeight: 1, textTransform: 'lowercase',
-    },
-    subtitle: {
-      fontFamily: "var(--font-headline)", fontWeight: 600,
-      fontSize: '16px', color: 'var(--on-surface-variant)', opacity: 0.8,
-      marginTop: '12px',
-    },
-    buildBtn: {
-      marginTop: '24px', display: 'inline-block',
-      background: 'linear-gradient(180deg, var(--primary-container) 0%, var(--primary) 100%)',
-      color: '#fff', fontFamily: "var(--font-headline)", fontWeight: 700,
-      fontSize: '18px', padding: '16px 40px', borderRadius: '9999px',
-      border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-gummy)',
-      transition: 'transform 0.3s var(--bounce)',
-    },
-    buildSubtext: {
-      display: 'block', marginTop: '8px',
-      fontFamily: "var(--font-body)", fontSize: '12px',
-      color: 'var(--primary)', opacity: 0.5, fontStyle: 'italic',
-    },
-    statsRow: {
-      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px',
-      width: '100%', maxWidth: '480px', marginBottom: '32px',
-    },
-    statCard: (bg, color) => ({
-      background: bg, color: color, borderRadius: 'var(--radius-lg)',
-      padding: '20px', textAlign: 'center',
-      boxShadow: 'var(--shadow-gummy)',
-      transition: 'transform 0.5s var(--bounce)',
-      cursor: 'default',
-    }),
-    statNum: {
-      fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '28px',
-    },
-    statLabel: {
-      fontFamily: "var(--font-headline)", fontSize: '11px',
-      textTransform: 'lowercase', fontWeight: 500, marginTop: '4px',
-    },
-    chapterHeader: {
-      fontFamily: "var(--font-headline)", fontSize: '11px', fontWeight: 700,
-      color: 'var(--primary)', letterSpacing: '1.5px', textTransform: 'uppercase',
-      padding: '0 4px 8px', borderBottom: '2px solid var(--surface-container)',
-      marginBottom: '8px',
-    },
-    levelBtn: {
-      display: 'flex', alignItems: 'center', gap: '14px',
-      padding: '12px 16px', background: 'var(--surface-container-lowest)',
-      border: 'none', borderRadius: 'var(--radius)',
-      cursor: 'pointer', textAlign: 'left', width: '100%',
-      boxShadow: 'var(--shadow-gummy)',
-      transition: 'all 0.4s var(--bounce)',
-      fontFamily: "var(--font-body)",
-    },
-    levelNum: {
-      fontFamily: "var(--font-headline)", color: 'var(--primary)',
-      fontSize: '16px', fontWeight: 800, width: '28px', textAlign: 'right',
-    },
-    levelName: {
-      color: 'var(--on-surface)', fontSize: '14px',
-      fontFamily: "var(--font-headline)", fontWeight: 700,
-    },
-    levelDesc: {
-      color: 'var(--on-surface-variant)', fontSize: '11px',
-      fontFamily: "var(--font-body)", marginTop: '2px', fontStyle: 'italic',
-      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-    },
-    footer: {
-      marginTop: '32px', textAlign: 'center',
-      fontFamily: "var(--font-body)", fontSize: '10px',
-      color: 'var(--primary)', opacity: 0.5, fontStyle: 'italic',
-    },
+  const chapterDescriptions = {
+    1: '5 levels. learn the controls. enjoy it while it lasts.',
+    2: '50 mazes bred by genetic algorithm over 25,000 simulated playthroughs. sorted by cruelty.',
+    3: '20 mazes where an RL agent learned to place traps for maximum suffering. it watched 10,000 simulated players die.',
   }
 
   return (
-    <div style={s.page}>
-      <div style={s.hero}>
-        <h1 style={s.title}>mazochist</h1>
-        <p style={s.subtitle}>Build absurd mazes. Share links. Watch people fail.</p>
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      minHeight: '100vh', padding: '0 20px 80px',
+      fontFamily: 'var(--font-body)',
+    }}>
+      <div style={{ textAlign: 'center', padding: '60px 0 40px', maxWidth: '480px' }}>
+        <h1 style={{
+          fontFamily: 'var(--font-headline)', fontWeight: 800,
+          fontSize: 'clamp(48px, 12vw, 80px)', color: 'var(--primary)',
+          letterSpacing: '-2px', lineHeight: 1, textTransform: 'lowercase',
+        }}>
+          mazochist
+        </h1>
+        <p style={{
+          fontFamily: 'var(--font-headline)', fontWeight: 600,
+          fontSize: '16px', color: 'var(--on-surface-variant)', opacity: 0.8,
+          marginTop: '12px',
+        }}>
+          {allLevels.length} levels. 3 chapters. each one worse than the last.
+        </p>
         <button
-          style={s.buildBtn}
           onClick={onBuild}
+          style={{
+            marginTop: '24px', display: 'inline-block',
+            background: 'linear-gradient(180deg, var(--primary-container) 0%, var(--primary) 100%)',
+            color: '#fff', fontFamily: 'var(--font-headline)', fontWeight: 700,
+            fontSize: '18px', padding: '16px 40px', borderRadius: '9999px',
+            border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-gummy)',
+            transition: 'transform 0.3s var(--bounce)',
+          }}
           onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           BUILD A MAZE
         </button>
-        <span style={s.buildSubtext}>no account needed. just cruelty.</span>
+        <span style={{
+          display: 'block', marginTop: '8px',
+          fontFamily: 'var(--font-body)', fontSize: '12px',
+          color: 'var(--primary)', opacity: 0.5, fontStyle: 'italic',
+        }}>
+          no account needed. just cruelty.
+        </span>
       </div>
 
-      <div style={s.statsRow}>
-        <div
-          style={s.statCard('var(--secondary-container)', 'var(--on-secondary-container)')}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-        >
-          <div style={s.statNum}>100</div>
-          <div style={s.statLabel}>levels of suffering</div>
-        </div>
-        <div
-          style={s.statCard('var(--tertiary-container)', 'var(--on-tertiary-container)')}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-        >
-          <div style={s.statNum}>99.9%</div>
-          <div style={s.statLabel}>failure rate</div>
-        </div>
-      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', width: '100%', maxWidth: '480px' }}>
+        {chapters.map((ch) => {
+          const desc = chapterDescriptions[ch.number] || ''
+          return (
+            <div key={ch.number}>
+              <div style={{
+                fontFamily: 'var(--font-headline)', fontSize: '11px', fontWeight: 700,
+                color: 'var(--primary)', letterSpacing: '1.5px', textTransform: 'uppercase',
+                padding: '0 4px 6px',
+              }}>
+                Chapter {ch.number}: {ch.name}
+              </div>
+              {desc && (
+                <div style={{
+                  fontFamily: 'var(--font-body)', fontSize: '11px', fontStyle: 'italic',
+                  color: 'var(--on-surface-variant)', opacity: 0.7,
+                  padding: '0 4px 10px',
+                }}>
+                  {desc}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {ch.levels.map((level) => {
+                  const mods = getModifiersInGrid(level.grid)
+                  const obs = getObstacleCount(level.grid)
+                  const tags = []
+                  if (obs.traps > 0) tags.push(`${obs.traps} traps`)
+                  if (obs.gates > 0) tags.push(`${obs.gates} gates`)
+                  if (obs.fakes > 0) tags.push(`${obs.fakes} fakes`)
+                  if (level.fogRadius) tags.push('fog')
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%', maxWidth: '480px' }}>
-        {chapters.map((ch) => (
-          <div key={ch.number}>
-            <div style={s.chapterHeader}>Chapter {ch.number}: {ch.name}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {ch.levels.map((level) => {
-                const mods = getModifiersInGrid(level.grid)
-                return (
-                  <button
-                    key={level.index}
-                    onClick={() => onSelectLevel(level.index)}
-                    style={s.levelBtn}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px) scale(1.01)'
-                      e.currentTarget.style.boxShadow = '0px 16px 40px rgba(45, 51, 74, 0.12)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0) scale(1)'
-                      e.currentTarget.style.boxShadow = 'var(--shadow-gummy)'
-                    }}
-                  >
-                    <span style={s.levelNum}>{level.index + 1}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={s.levelName}>{level.name}</div>
-                      <div style={s.levelDesc}>{level.description}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '3px', fontSize: '13px', flexShrink: 0 }}>
-                      {mods.slice(0, 4).map((m) => (
-                        <span key={m}>{MODIFIER_TAGS[m] || '?'}</span>
-                      ))}
-                      {mods.length > 4 && (
-                        <span style={{ color: 'var(--on-surface-variant)', fontSize: '10px', fontWeight: 600 }}>+{mods.length - 4}</span>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
+                  return (
+                    <button
+                      key={level.index}
+                      onClick={() => onSelectLevel(level.index)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '14px',
+                        padding: '12px 16px', background: 'var(--surface-container-lowest)',
+                        border: 'none', borderRadius: 'var(--radius)',
+                        cursor: 'pointer', textAlign: 'left', width: '100%',
+                        boxShadow: 'var(--shadow-gummy)',
+                        transition: 'all 0.4s var(--bounce)',
+                        fontFamily: 'var(--font-body)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.01)'
+                        e.currentTarget.style.boxShadow = '0px 16px 40px rgba(45, 51, 74, 0.12)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                        e.currentTarget.style.boxShadow = 'var(--shadow-gummy)'
+                      }}
+                    >
+                      <span style={{
+                        fontFamily: 'var(--font-headline)', color: 'var(--primary)',
+                        fontSize: '16px', fontWeight: 800, width: '28px', textAlign: 'right',
+                      }}>
+                        {level.index + 1}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          color: 'var(--on-surface)', fontSize: '14px',
+                          fontFamily: 'var(--font-headline)', fontWeight: 700,
+                        }}>
+                          {level.name}
+                        </div>
+                        <div style={{
+                          color: 'var(--on-surface-variant)', fontSize: '10px',
+                          marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {level.grid.cols}x{level.grid.rows}
+                          {tags.length > 0 && ` · ${tags.join(' · ')}`}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '3px', fontSize: '13px', flexShrink: 0 }}>
+                        {mods.slice(0, 4).map((m) => (
+                          <span key={m}>{MODIFIER_TAGS[m] || '?'}</span>
+                        ))}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      <p style={s.footer}>made with love and a concerning amount of spite.</p>
+      <p style={{
+        marginTop: '32px', textAlign: 'center',
+        fontFamily: 'var(--font-body)', fontSize: '10px',
+        color: 'var(--primary)', opacity: 0.5, fontStyle: 'italic',
+      }}>
+        made with love and a concerning amount of spite.
+      </p>
     </div>
   )
 }
 
-export { ALL_LEVELS }
 export default LevelSelect
