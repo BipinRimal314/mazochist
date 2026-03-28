@@ -2,6 +2,13 @@ import { playSound } from './sound'
 
 function applyModifierEffect(type, ball, grid, cellSize, now, setState) {
   switch (type) {
+    case 'reverse':
+      return {
+        ...ball,
+        reversed: true,
+        reversedUntil: now + 3000,
+      }
+
     case 'fart':
       playSound('fart')
       return {

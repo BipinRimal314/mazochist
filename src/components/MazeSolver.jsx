@@ -115,7 +115,7 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
         const trigger = checkModifierTrigger(ball, ag, CELL_SIZE)
         const tk = trigger ? `${trigger.cellX},${trigger.cellY}` : null
         if (trigger && tk !== lastTriggerRef.current) {
-          if (['fart', 'fakeExit', 'teleporter'].includes(trigger.type)) {
+          if (['fart', 'fakeExit', 'teleporter', 'reverse'].includes(trigger.type)) {
             ball = applyModifierEffect(trigger.type, ball, grid, CELL_SIZE, now, setState)
           }
           lastTriggerRef.current = tk
@@ -325,10 +325,27 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
         </div>
       )}
 
-      <canvas
-        ref={canvasRef}
-        style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-gummy)' }}
-      />
+      <div style={{ position: 'relative' }}>
+        <canvas
+          ref={canvasRef}
+          style={{
+            borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-gummy)',
+            transition: 'filter 0.3s ease',
+            filter: (state.ball.reversed && Date.now() < state.ball.reversedUntil) ? 'hue-rotate(180deg)' : 'none',
+          }}
+        />
+        {state.ball.reversed && Date.now() < state.ball.reversedUntil && (
+          <div style={{
+            position: 'absolute', top: '8px', right: '8px',
+            background: 'var(--error-container)', color: '#fff',
+            padding: '4px 10px', borderRadius: '9999px',
+            fontSize: '10px', fontFamily: "var(--font-headline)", fontWeight: 700,
+            pointerEvents: 'none',
+          }}>
+            \u{1F500} reversed!
+          </div>
+        )}
+      </div>
 
       {Date.now() < state.psycheUntil && (
         <div style={{

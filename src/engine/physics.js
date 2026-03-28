@@ -63,10 +63,12 @@ function updateBall(ball, input, grid, cellSize, now) {
     const pullDx = centerX - x
     const pullDy = centerY - y
 
-    // gentle constant pull — slows you down and drifts you toward center
-    // but holding a direction always wins
-    vx += pullDx * 0.036
-    vy += pullDy * 0.036
+    // strong pull that grabs you but can be escaped with sustained input
+    vx += pullDx * 0.06
+    vy += pullDy * 0.06
+    // dampen velocity inside the well
+    vx *= 0.95
+    vy *= 0.95
   }
 
   const maxSpeed = cellSize * 0.42
