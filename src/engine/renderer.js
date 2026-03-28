@@ -1,21 +1,22 @@
 const COLORS = {
-  bg: '#faf6f0',
-  wall: '#3d3229',
-  grid: '#ede6dd',
-  start: '#7eb88a',
-  end: '#d97373',
-  ball: '#e8b84a',
+  bg: '#fef6e4',
+  wall: '#322f23',
+  grid: '#eae2cc',
+  start: '#0d656e',
+  end: '#993862',
+  ball: '#fed701',
+  ballHighlight: 'rgba(255, 255, 255, 0.4)',
   modifier: {
     gravity: '#b8a9d4',
-    reverse: '#d97373',
-    spinner: '#7eb0c9',
-    blackout: '#5c5148',
-    fakeExit: '#d97373',
+    reverse: '#f74b6d',
+    spinner: '#0d656e',
+    blackout: '#322f23',
+    fakeExit: '#993862',
     slideWall: '#e8985a',
-    fatCursor: '#a3cce0',
-    fart: '#c4a574',
+    fatCursor: '#a3ecf6',
+    fart: '#8a7550',
     teleporter: '#b8a9d4',
-    ice: '#a3cce0',
+    ice: '#a3ecf6',
   },
 }
 
@@ -37,9 +38,11 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
   const width = grid.cols * cellSize
   const height = grid.rows * cellSize
 
+  // cream background
   ctx.fillStyle = COLORS.bg
   ctx.fillRect(0, 0, width, height)
 
+  // subtle grid
   if (showGrid) {
     ctx.strokeStyle = COLORS.grid
     ctx.lineWidth = 0.5
@@ -57,44 +60,78 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
     }
   }
 
-  // start — rounded square
+  // start — teal rounded square
   ctx.fillStyle = COLORS.start
-  roundRect(ctx, grid.start.x * cellSize + 3, grid.start.y * cellSize + 3, cellSize - 6, cellSize - 6, 4)
+  roundRect(ctx, grid.start.x * cellSize + 3, grid.start.y * cellSize + 3, cellSize - 6, cellSize - 6, 5)
+  ctx.fill()
+  // play icon
+  ctx.fillStyle = '#ffffff'
+  const sx = grid.start.x * cellSize + cellSize * 0.4
+  const sy = grid.start.y * cellSize + cellSize * 0.3
+  ctx.beginPath()
+  ctx.moveTo(sx, sy)
+  ctx.lineTo(sx + cellSize * 0.3, sy + cellSize * 0.2)
+  ctx.lineTo(sx, sy + cellSize * 0.4)
+  ctx.closePath()
   ctx.fill()
 
-  // end — rounded square
+  // end — pink rounded square
   ctx.fillStyle = COLORS.end
-  roundRect(ctx, grid.end.x * cellSize + 3, grid.end.y * cellSize + 3, cellSize - 6, cellSize - 6, 4)
+  roundRect(ctx, grid.end.x * cellSize + 3, grid.end.y * cellSize + 3, cellSize - 6, cellSize - 6, 5)
+  ctx.fill()
+  // flag icon
+  ctx.fillStyle = '#ffffff'
+  const fx = grid.end.x * cellSize + cellSize * 0.35
+  const fy = grid.end.y * cellSize + cellSize * 0.25
+  ctx.fillRect(fx, fy, 2, cellSize * 0.5)
+  ctx.beginPath()
+  ctx.moveTo(fx + 2, fy)
+  ctx.lineTo(fx + cellSize * 0.35, fy + cellSize * 0.12)
+  ctx.lineTo(fx + 2, fy + cellSize * 0.25)
+  ctx.closePath()
   ctx.fill()
 
+  // modifiers
   if (showModifiers) {
     for (const cell of grid.cells) {
       if (!cell.modifier) continue
 
+      // fake exits
       if (cell.modifier === 'fakeExit') {
         const key = `${cell.x},${cell.y}`
         if (collectedFakeExits.has(key)) {
-          ctx.fillStyle = '#ede6dd'
-          roundRect(ctx, cell.x * cellSize + 3, cell.y * cellSize + 3, cellSize - 6, cellSize - 6, 4)
+          ctx.fillStyle = '#e5dcc6'
+          roundRect(ctx, cell.x * cellSize + 3, cell.y * cellSize + 3, cellSize - 6, cellSize - 6, 5)
           ctx.fill()
-          ctx.font = `${cellSize * 0.4}px Nunito, sans-serif`
+          ctx.font = `600 ${cellSize * 0.35}px 'Plus Jakarta Sans', sans-serif`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillStyle = 'var(--text-muted)'
+          ctx.fillStyle = '#b3ad9c'
           ctx.fillText('\u{2713}', cell.x * cellSize + cellSize / 2, cell.y * cellSize + cellSize / 2)
         } else {
+          // looks identical to the real exit
           ctx.fillStyle = COLORS.end
-          roundRect(ctx, cell.x * cellSize + 3, cell.y * cellSize + 3, cellSize - 6, cellSize - 6, 4)
+          roundRect(ctx, cell.x * cellSize + 3, cell.y * cellSize + 3, cellSize - 6, cellSize - 6, 5)
+          ctx.fill()
+          ctx.fillStyle = '#ffffff'
+          const efx = cell.x * cellSize + cellSize * 0.35
+          const efy = cell.y * cellSize + cellSize * 0.25
+          ctx.fillRect(efx, efy, 2, cellSize * 0.5)
+          ctx.beginPath()
+          ctx.moveTo(efx + 2, efy)
+          ctx.lineTo(efx + cellSize * 0.35, efy + cellSize * 0.12)
+          ctx.lineTo(efx + 2, efy + cellSize * 0.25)
+          ctx.closePath()
           ctx.fill()
         }
         continue
       }
 
-      const color = COLORS.modifier[cell.modifier] || '#a89888'
-      ctx.fillStyle = color + '30'
+      const color = COLORS.modifier[cell.modifier] || '#b3ad9c'
+      ctx.fillStyle = color + '25'
       roundRect(ctx, cell.x * cellSize + 2, cell.y * cellSize + 2, cellSize - 4, cellSize - 4, 4)
       ctx.fill()
-      ctx.font = `${cellSize * 0.45}px serif`
+      ctx.font = `${cellSize * 0.42}px serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(
@@ -105,7 +142,7 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
     }
   }
 
-  // walls — rounded caps, warm brown
+  // walls — deep plum, rounded caps, slightly thicker
   ctx.strokeStyle = COLORS.wall
   ctx.lineWidth = 2.5
   ctx.lineCap = 'round'
@@ -128,21 +165,28 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
 }
 
 function drawBall(ctx, x, y, radius, color = COLORS.ball) {
-  // soft shadow
+  // warm ambient shadow
   ctx.save()
-  ctx.shadowColor = 'rgba(61, 50, 41, 0.2)'
-  ctx.shadowBlur = 8
-  ctx.shadowOffsetY = 2
+  ctx.shadowColor = 'rgba(45, 51, 74, 0.15)'
+  ctx.shadowBlur = 10
+  ctx.shadowOffsetY = 3
   ctx.fillStyle = color
   ctx.beginPath()
   ctx.arc(x, y, radius, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 
-  // highlight
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
+  // white border
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 2
   ctx.beginPath()
-  ctx.arc(x - radius * 0.25, y - radius * 0.25, radius * 0.4, 0, Math.PI * 2)
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // shine highlight
+  ctx.fillStyle = COLORS.ballHighlight
+  ctx.beginPath()
+  ctx.arc(x - radius * 0.2, y - radius * 0.2, radius * 0.35, 0, Math.PI * 2)
   ctx.fill()
 }
 

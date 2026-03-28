@@ -8,24 +8,42 @@ import { playSound } from '../engine/sound'
 const CELL_SIZE = 30
 
 const DEATH_QUIPS = [
-  'almost!', 'so close!', 'oof.', 'not quite.', 'try again!',
-  'the maze believes in you.', 'that was rude of the maze.', 'breathe.',
-  'you got this.', 'it gets easier. (it doesn\'t.)', 'the maze is rooting for you.',
-  'pain is just progress with extra steps.', 'that one hurt.', 'still here? respect.',
-  'the ball forgives you.', 'we don\'t talk about that one.',
+  "you're doing great, sweetie!",
+  "everyone makes mistakes. yours are just very frequent.",
+  "the maze believes in you. we think.",
+  "that was the maze's fault. definitely.",
+  "pain is just spicy progress.",
+  "still here? we're impressed, honestly.",
+  "the ball forgives you. the maze doesn't.",
+  "maybe try closing your eyes? can't be worse.",
+  "we'd hug you but we're a maze.",
+  "that one hurt us too. not really.",
+  "have you tried being better at this?",
+  "suffering builds character. you have SO much character.",
+  "the maze whispers: 'again.'",
+  "almost! (we say that every time.)",
+  "breathe. then fail again.",
+  "nobody's watching. (everyone's watching.)",
 ]
+
+function getGrade(deaths, seconds) {
+  const score = Math.max(0, 100 - deaths * 3 - seconds * 0.5)
+  if (score >= 90) return { grade: 'S', label: 'Absolute legend.', color: 'var(--tertiary-container)' }
+  if (score >= 75) return { grade: 'A', label: 'Barely bleeding.', color: 'var(--secondary-container)' }
+  if (score >= 60) return { grade: 'B', label: 'Respectable suffering.', color: 'var(--secondary-container)' }
+  if (score >= 40) return { grade: 'C', label: 'Average agony.', color: 'var(--surface-container-high)' }
+  if (score >= 20) return { grade: 'D', label: 'Concerning performance.', color: 'var(--primary-container)' }
+  return { grade: 'E-', label: 'Legendary suffering.', color: 'var(--error-container)' }
+}
 
 function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
   const [grid] = useState(() => {
     if (levelGrid) return levelGrid
-    const hash = window.location.hash.slice(1)
-    return decodeFromHash(hash)
+    return decodeFromHash(window.location.hash.slice(1))
   })
 
   const [state, setState] = useState(() => {
-    const fakeExits = grid.cells
-      .filter((c) => c.modifier === 'fakeExit')
-      .map((c) => `${c.x},${c.y}`)
+    const fakeExits = grid.cells.filter((c) => c.modifier === 'fakeExit').map((c) => `${c.x},${c.y}`)
     return {
       ball: createBallState(grid, CELL_SIZE),
       startTime: Date.now(),
@@ -44,11 +62,9 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
   const animFrameRef = useRef(null)
   const prevDeathsRef = useRef(0)
 
-  // track deaths for quips
   useEffect(() => {
     if (state.ball.deaths > prevDeathsRef.current) {
-      const quip = DEATH_QUIPS[state.ball.deaths % DEATH_QUIPS.length]
-      setState((s) => ({ ...s, lastQuip: quip }))
+      setState((s) => ({ ...s, lastQuip: DEATH_QUIPS[s.ball.deaths % DEATH_QUIPS.length] }))
       prevDeathsRef.current = state.ball.deaths
     }
   }, [state.ball.deaths])
@@ -60,52 +76,26 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
       ArrowLeft: 'left', a: 'left', A: 'left',
       ArrowRight: 'right', d: 'right', D: 'right',
     }
-    const onDown = (e) => {
-      const dir = keyMap[e.key]
-      if (dir) { inputRef.current[dir] = true; e.preventDefault() }
-    }
-    const onUp = (e) => {
-      const dir = keyMap[e.key]
-      if (dir) inputRef.current[dir] = false
-    }
+    const onDown = (e) => { const d = keyMap[e.key]; if (d) { inputRef.current[d] = true; e.preventDefault() } }
+    const onUp = (e) => { const d = keyMap[e.key]; if (d) inputRef.current[d] = false }
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)
-    return () => {
-      window.removeEventListener('keydown', onDown)
-      window.removeEventListener('keyup', onUp)
-    }
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp) }
   }, [])
 
   useEffect(() => {
-    let touchStartX = 0
-    let touchStartY = 0
-    const onTouchStart = (e) => {
-      const touch = e.touches[0]
-      touchStartX = touch.clientX
-      touchStartY = touch.clientY
-    }
-    const onTouchMove = (e) => {
+    let sx = 0, sy = 0
+    const onTS = (e) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY }
+    const onTM = (e) => {
       e.preventDefault()
-      const touch = e.touches[0]
-      const dx = touch.clientX - touchStartX
-      const dy = touch.clientY - touchStartY
-      const threshold = 5
-      inputRef.current = {
-        up: dy < -threshold, down: dy > threshold,
-        left: dx < -threshold, right: dx > threshold,
-      }
+      const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy, t = 5
+      inputRef.current = { up: dy < -t, down: dy > t, left: dx < -t, right: dx > t }
     }
-    const onTouchEnd = () => {
-      inputRef.current = { up: false, down: false, left: false, right: false }
-    }
-    window.addEventListener('touchstart', onTouchStart)
-    window.addEventListener('touchmove', onTouchMove, { passive: false })
-    window.addEventListener('touchend', onTouchEnd)
-    return () => {
-      window.removeEventListener('touchstart', onTouchStart)
-      window.removeEventListener('touchmove', onTouchMove)
-      window.removeEventListener('touchend', onTouchEnd)
-    }
+    const onTE = () => { inputRef.current = { up: false, down: false, left: false, right: false } }
+    window.addEventListener('touchstart', onTS)
+    window.addEventListener('touchmove', onTM, { passive: false })
+    window.addEventListener('touchend', onTE)
+    return () => { window.removeEventListener('touchstart', onTS); window.removeEventListener('touchmove', onTM); window.removeEventListener('touchend', onTE) }
   }, [])
 
   useEffect(() => {
@@ -120,18 +110,18 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
       const now = Date.now()
       setState((prev) => {
         if (prev.won) return prev
-        const animatedGrid = getAnimatedGrid(grid, now)
-        let ball = updateBall(prev.ball, inputRef.current, animatedGrid, CELL_SIZE, now)
-        const trigger = checkModifierTrigger(ball, animatedGrid, CELL_SIZE)
-        const triggerKey = trigger ? `${trigger.cellX},${trigger.cellY}` : null
-        if (trigger && triggerKey !== lastTriggerRef.current) {
-          if (trigger.type === 'fart' || trigger.type === 'fakeExit' || trigger.type === 'teleporter') {
+        const ag = getAnimatedGrid(grid, now)
+        let ball = updateBall(prev.ball, inputRef.current, ag, CELL_SIZE, now)
+        const trigger = checkModifierTrigger(ball, ag, CELL_SIZE)
+        const tk = trigger ? `${trigger.cellX},${trigger.cellY}` : null
+        if (trigger && tk !== lastTriggerRef.current) {
+          if (['fart', 'fakeExit', 'teleporter'].includes(trigger.type)) {
             ball = applyModifierEffect(trigger.type, ball, grid, CELL_SIZE, now, setState)
           }
-          lastTriggerRef.current = triggerKey
+          lastTriggerRef.current = tk
         }
         if (!trigger) lastTriggerRef.current = null
-        if (checkWin(ball, animatedGrid, CELL_SIZE) && prev.exitUnlocked) {
+        if (checkWin(ball, ag, CELL_SIZE) && prev.exitUnlocked) {
           playSound('victory')
           return { ...prev, ball, won: true }
         }
@@ -149,83 +139,195 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
     const ctx = canvas.getContext('2d')
     canvas.width = grid.cols * CELL_SIZE
     canvas.height = grid.rows * CELL_SIZE
-    const animatedGrid = getAnimatedGrid(grid, Date.now())
-    drawMaze(ctx, animatedGrid, CELL_SIZE, { collectedFakeExits: state.fakeExitsCollected })
-    const trigger = checkModifierTrigger(state.ball, animatedGrid, CELL_SIZE)
-    if (trigger) {
-      renderModifierOverlay(ctx, trigger.type, state.ball, animatedGrid, CELL_SIZE, Date.now())
-    }
+    const ag = getAnimatedGrid(grid, Date.now())
+    drawMaze(ctx, ag, CELL_SIZE, { collectedFakeExits: state.fakeExitsCollected })
+    const trigger = checkModifierTrigger(state.ball, ag, CELL_SIZE)
+    if (trigger) renderModifierOverlay(ctx, trigger.type, state.ball, ag, CELL_SIZE, Date.now())
     drawBall(ctx, state.ball.x, state.ball.y, state.ball.radius)
   }, [state.ball, grid])
 
   const elapsed = Math.floor((Date.now() - state.startTime) / 1000)
-  const minutes = Math.floor(elapsed / 60)
-  const seconds = elapsed % 60
+  const mins = Math.floor(elapsed / 60)
+  const secs = elapsed % 60
+  const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 
-  const containerStyle = {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    gap: '14px', padding: '24px 20px', fontFamily: 'var(--font)',
-  }
+  const goBack = onBack || (() => { window.location.hash = ''; window.location.reload() })
 
-  const btnPrimary = {
-    padding: '12px 28px', background: 'var(--accent)', color: '#fff',
-    border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontWeight: 700, fontSize: '15px',
-    boxShadow: '0 2px 8px rgba(232, 152, 90, 0.3)',
-    transition: 'transform 0.15s ease',
-  }
-
-  const btnSecondary = {
-    padding: '10px 24px', background: 'transparent', color: 'var(--text-muted)',
-    border: '1.5px solid #ede6dd', borderRadius: 'var(--radius)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontWeight: 600, fontSize: '13px',
-    transition: 'all 0.15s ease',
-  }
-
+  // VICTORY / SHAME SCREEN
   if (state.won) {
-    const goBack = onBack || (() => { window.location.hash = ''; window.location.reload() })
+    const { grade, label, color } = getGrade(state.ball.deaths, elapsed)
     return (
-      <div style={{ ...containerStyle, justifyContent: 'center', height: '100vh', gap: '16px' }}>
-        <div style={{ fontSize: '48px' }}>🎉</div>
-        <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--success)' }}>you escaped!</h1>
-        {levelNumber != null && (
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>level {levelNumber + 1} cleared</p>
-        )}
-        {grid.hiddenWord && (
-          <p style={{ fontSize: '20px', fontWeight: 700, color: 'var(--accent)' }}>
-            &ldquo;{grid.hiddenWord}&rdquo;
-          </p>
-        )}
-        <p style={{ fontSize: '15px', color: 'var(--text-muted)' }}>
-          {minutes}:{seconds.toString().padStart(2, '0')} &middot; {state.ball.deaths} {state.ball.deaths === 1 ? 'death' : 'deaths'}
-        </p>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-          {onNextLevel && (
-            <button onClick={onNextLevel} style={btnPrimary}>next level</button>
-          )}
-          <button onClick={goBack} style={btnSecondary}>
-            {onBack ? 'levels' : 'build your own'}
-          </button>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', minHeight: '100vh', padding: '40px 20px',
+        fontFamily: "var(--font-body)",
+        background: 'radial-gradient(at 0% 0%, #fef6e4 0%, transparent 50%), radial-gradient(at 100% 0%, #fa86b2 0%, transparent 50%), radial-gradient(at 100% 100%, #a3ecf6 0%, transparent 50%), radial-gradient(at 0% 100%, #fed701 0%, transparent 50%)',
+        backgroundColor: '#fef6e4',
+      }}>
+        <div style={{
+          background: 'var(--surface-container-lowest)', borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow-gummy)', overflow: 'hidden', maxWidth: '420px', width: '100%',
+          border: '4px solid white',
+        }}>
+          <div style={{ padding: '32px', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+              {state.ball.deaths < 5 ? '\u{1F389}' : state.ball.deaths < 20 ? '\u{1F605}' : '\u{1F480}'}
+            </div>
+            <h2 style={{
+              fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '24px',
+              color: 'var(--primary)', lineHeight: 1.2, marginBottom: '4px',
+            }}>
+              {state.ball.deaths < 5 ? 'you actually escaped!' : 'I barely survived a MAZOCHIST maze'}
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>
+              {state.ball.deaths < 5 ? 'show-off.' : '"at least you didn\'t quit. yet."'}
+            </p>
+
+            {grid.hiddenWord && (
+              <div style={{
+                marginTop: '16px', padding: '12px 20px', background: 'var(--surface-container-low)',
+                borderRadius: 'var(--radius)', display: 'inline-block',
+              }}>
+                <span style={{ fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '20px', color: 'var(--primary)' }}>
+                  &ldquo;{grid.hiddenWord}&rdquo;
+                </span>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '20px' }}>
+              <div style={{ background: 'var(--surface-container-low)', borderRadius: 'var(--radius)', padding: '16px' }}>
+                <div style={{ fontSize: '10px', fontFamily: "var(--font-headline)", textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--on-surface-variant)', marginBottom: '4px' }}>
+                  time
+                </div>
+                <div style={{ fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '18px', color: 'var(--primary)' }}>
+                  {mins > 0 ? `${mins}m ${secs}s` : `${secs}s`}
+                </div>
+              </div>
+              <div style={{ background: 'var(--secondary-container)', borderRadius: 'var(--radius)', padding: '16px' }}>
+                <div style={{ fontSize: '10px', fontFamily: "var(--font-headline)", textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--on-secondary-container)', marginBottom: '4px', opacity: 0.7 }}>
+                  deaths
+                </div>
+                <div style={{ fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '18px', color: 'var(--on-secondary-container)' }}>
+                  {state.ball.deaths}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: color, borderRadius: 'var(--radius)', padding: '16px', marginTop: '12px' }}>
+              <div style={{ fontSize: '10px', fontFamily: "var(--font-headline)", textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', opacity: 0.7 }}>rank</div>
+              <div style={{ fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '24px' }}>{grade}</div>
+              <div style={{ fontSize: '11px', fontStyle: 'italic', marginTop: '2px' }}>{label}</div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'center' }}>
+              {onNextLevel && (
+                <button
+                  onClick={onNextLevel}
+                  style={{
+                    background: 'linear-gradient(180deg, var(--primary-container) 0%, var(--primary) 100%)',
+                    color: '#fff', fontFamily: "var(--font-headline)", fontWeight: 700,
+                    fontSize: '15px', padding: '14px 28px', borderRadius: '9999px',
+                    border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-gummy)',
+                    transition: 'transform 0.3s var(--bounce)',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  next level
+                </button>
+              )}
+              <button
+                onClick={goBack}
+                style={{
+                  background: 'var(--surface-container-lowest)', color: 'var(--primary)',
+                  fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: '14px',
+                  padding: '14px 24px', borderRadius: '9999px',
+                  border: '2px solid var(--primary-container)', cursor: 'pointer',
+                  transition: 'transform 0.3s var(--bounce)',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                {onBack ? 'levels' : 'build your own'}
+              </button>
+            </div>
+          </div>
+          <div style={{
+            background: 'var(--surface-container-high)', padding: '12px',
+            textAlign: 'center', fontSize: '10px', fontStyle: 'italic',
+            color: 'var(--primary)', opacity: 0.6,
+          }}>
+            mazochist — lovingly crafted suffering
+          </div>
         </div>
       </div>
     )
   }
 
+  // PLAYING SCREEN
   return (
-    <div style={containerStyle}>
-      <div style={{ display: 'flex', gap: '20px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>
-        <span>{minutes}:{seconds.toString().padStart(2, '0')}</span>
-        <span>{state.ball.deaths} {state.ball.deaths === 1 ? 'death' : 'deaths'}</span>
-        {state.fakeExitsTotal > 0 && (
-          <span style={{ color: state.exitUnlocked ? 'var(--success)' : 'var(--danger)' }}>
-            {state.exitUnlocked ? 'exit open' : `${state.fakeExitsCollected.size}/${state.fakeExitsTotal} found`}
-          </span>
-        )}
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: '16px', padding: '20px', fontFamily: "var(--font-body)",
+    }}>
+      {levelNumber != null && (
+        <div style={{
+          background: 'var(--primary-container)', color: 'var(--primary-dim)',
+          padding: '6px 16px', borderRadius: '9999px', fontSize: '12px',
+          fontFamily: "var(--font-headline)", fontWeight: 700,
+        }}>
+          someone made this for you {'\u{1F496}'}
+        </div>
+      )}
+
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px',
+        width: '100%', maxWidth: `${grid.cols * CELL_SIZE}px`,
+      }}>
+        <div style={{
+          background: 'var(--surface-container-low)', borderRadius: 'var(--radius)',
+          padding: '14px 16px', boxShadow: 'var(--shadow-gummy)',
+          transform: 'rotate(-0.5deg)',
+        }}>
+          <div style={{ fontSize: '10px', fontFamily: "var(--font-headline)", color: 'var(--on-surface-variant)', opacity: 0.6, textTransform: 'lowercase' }}>
+            suffering duration
+          </div>
+          <div style={{ fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '24px', color: 'var(--on-surface)', marginTop: '2px' }}>
+            {timeStr}
+          </div>
+        </div>
+        <div style={{
+          background: 'var(--surface-container-lowest)', borderRadius: 'var(--radius)',
+          padding: '14px 16px', boxShadow: 'var(--shadow-gummy)',
+          transform: 'rotate(0.5deg)', textAlign: 'right',
+        }}>
+          <div style={{ fontSize: '10px', fontFamily: "var(--font-headline)", color: 'var(--on-surface-variant)', opacity: 0.6, textTransform: 'lowercase' }}>
+            setbacks
+          </div>
+          <div style={{ fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '24px', color: 'var(--primary)', marginTop: '2px' }}>
+            {state.ball.deaths}
+            {state.ball.deaths > 0 && (
+              <span style={{ fontSize: '12px', fontWeight: 500, marginLeft: '6px' }}>(ouch)</span>
+            )}
+          </div>
+        </div>
       </div>
+
+      {state.fakeExitsTotal > 0 && (
+        <div style={{
+          background: state.exitUnlocked ? 'var(--secondary-container)' : 'var(--surface-container)',
+          borderRadius: '9999px', padding: '6px 16px', fontSize: '11px',
+          fontFamily: "var(--font-headline)", fontWeight: 700,
+          color: state.exitUnlocked ? 'var(--on-secondary-container)' : 'var(--on-surface-variant)',
+          transition: 'all 0.3s ease',
+        }}>
+          {state.exitUnlocked ? '\u{2705} exit unlocked!' : `\u{1F512} ${state.fakeExitsCollected.size}/${state.fakeExitsTotal} found`}
+        </div>
+      )}
 
       <canvas
         ref={canvasRef}
-        style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}
+        style={{ borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-gummy)' }}
       />
 
       {Date.now() < state.psycheUntil && (
@@ -234,9 +336,8 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
           zIndex: 100, pointerEvents: 'none',
         }}>
           <h1 style={{
-            fontSize: '64px', fontWeight: 800, color: 'var(--danger)',
-            textShadow: '0 4px 20px rgba(217, 115, 115, 0.4)',
-            fontFamily: 'var(--font)',
+            fontFamily: "var(--font-headline)", fontSize: '72px', fontWeight: 800,
+            color: 'var(--primary)', textShadow: '0 4px 24px rgba(153, 56, 98, 0.3)',
           }}>
             psyche!
           </h1>
@@ -245,23 +346,37 @@ function MazeSolver({ levelGrid, levelNumber, onBack, onNextLevel }) {
 
       {state.lastQuip && state.ball.deaths > 0 && (
         <p style={{
-          fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic',
-          minHeight: '20px', transition: 'opacity 0.3s ease',
+          fontSize: '12px', color: 'var(--on-surface-variant)',
+          fontStyle: 'italic', textAlign: 'center', maxWidth: '300px',
+          fontFamily: "var(--font-body)",
         }}>
           {state.lastQuip}
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '4px' }}>
-        <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>wasd or arrows</span>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '4px' }}>
+        <span style={{ fontSize: '10px', color: 'var(--on-surface-variant)', opacity: 0.5, textTransform: 'lowercase' }}>
+          wasd or arrows
+        </span>
         <button
-          onClick={onBack || (() => { window.location.hash = ''; window.location.reload() })}
+          onClick={goBack}
           style={{
-            ...btnSecondary, fontSize: '11px', padding: '6px 14px',
-            borderColor: 'var(--danger-light)', color: 'var(--danger)',
+            background: 'var(--surface-container-lowest)', color: 'var(--primary)',
+            fontFamily: "var(--font-headline)", fontWeight: 800, fontSize: '12px',
+            padding: '8px 20px', borderRadius: '9999px',
+            border: '2px solid var(--primary-container)', cursor: 'pointer',
+            transition: 'all 0.4s var(--bounce)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--primary-container)'
+            e.currentTarget.style.color = '#fff'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--surface-container-lowest)'
+            e.currentTarget.style.color = 'var(--primary)'
           }}
         >
-          give up
+          just give up already?
         </button>
       </div>
     </div>
