@@ -91,6 +91,28 @@ function drawMaze(ctx, grid, cellSize, options = {}) {
   ctx.closePath()
   ctx.fill()
 
+  // one-way gates
+  for (const cell of grid.cells) {
+    if (!cell.gate || !cell.gate.open) continue
+    const cx = cell.x * cellSize + cellSize / 2
+    const cy = cell.y * cellSize + cellSize / 2
+    const s = cellSize * 0.2
+    ctx.fillStyle = 'rgba(13, 101, 110, 0.5)'
+    ctx.beginPath()
+    switch (cell.gate.direction) {
+      case 'right':
+        ctx.moveTo(cx - s, cy - s); ctx.lineTo(cx + s, cy); ctx.lineTo(cx - s, cy + s); break
+      case 'left':
+        ctx.moveTo(cx + s, cy - s); ctx.lineTo(cx - s, cy); ctx.lineTo(cx + s, cy + s); break
+      case 'down':
+        ctx.moveTo(cx - s, cy - s); ctx.lineTo(cx, cy + s); ctx.lineTo(cx + s, cy - s); break
+      case 'up':
+        ctx.moveTo(cx - s, cy + s); ctx.lineTo(cx, cy - s); ctx.lineTo(cx + s, cy + s); break
+    }
+    ctx.closePath()
+    ctx.fill()
+  }
+
   // modifiers
   if (showModifiers) {
     for (const cell of grid.cells) {
