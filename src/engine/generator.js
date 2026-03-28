@@ -1,4 +1,4 @@
-import { createGrid, setModifier, setStart, setEnd, setHiddenWord, getCell, toggleWallBetween, setTrap, setGate } from './maze'
+import { createGrid, setModifier, setStart, setEnd, setHiddenWord, getCell, toggleWallBetween, setTrap, setGate, setLiarWalls, setMimic, setMemoryWipe } from './maze'
 
 // seeded PRNG for deterministic level generation
 function mulberry32(seed) {
@@ -121,6 +121,9 @@ function getEraConfig(levelNumber) {
       deadEndMax: 3 + Math.floor((levelNumber - 1) / 10) * 2,
       trapCount: 0,
       gateCount: 0,
+      liarCount: 0,
+      mimicCount: 0,
+      memoryWipeCount: 0,
       fogRadius: null,
       deathMode: 'progress',
     }
@@ -133,6 +136,9 @@ function getEraConfig(levelNumber) {
       deadEndMax: 8 + Math.floor(idx / 5),
       trapCount: 2 + Math.floor(idx / 8),
       gateCount: 1 + Math.floor(idx / 10),
+      liarCount: 1 + Math.floor(idx / 6),
+      mimicCount: Math.floor(idx / 10),
+      memoryWipeCount: idx > 15 ? 1 : 0,
       fogRadius: 4,
       deathMode: 'full',
     }
@@ -144,6 +150,9 @@ function getEraConfig(levelNumber) {
     deadEndMax: 12 + Math.floor(idx / 4),
     trapCount: 5 + Math.floor(idx / 5),
     gateCount: 3 + Math.floor(idx / 8),
+    liarCount: 3 + Math.floor(idx / 5),
+    mimicCount: 1 + Math.floor(idx / 8),
+    memoryWipeCount: 1 + Math.floor(idx / 12),
     fogRadius: 2.5,
     deathMode: 'cumulative',
   }
@@ -291,6 +300,113 @@ function placeGates(grid, solutionPath, count, rng) {
     if (tooClose) continue
     grid = setGate(grid, cand.x, cand.y, cand.direction)
     placed.push(cand)
+  }
+
+  return grid
+}
+
+// place liar walls — visually deceive the player
+function placeLiarWalls(grid, solutionPath, count, rng) {
+  const pathSet = new Set(solutionPath.map((p) => `${p.x},${p.y}`))
+
+  // find cells ON the solution path where we can hide a real wall (show open)
+  // or cells OFF the path where we can show a fake wall (block visually but not physically)
+  const candidates = []
+
+  for (const cell of grid.cells) {
+    if ((cell.x === grid.start.x && cell.y === grid.start.y) ||
+        (cell.x === grid.end.x && cell.y === grid.end.y)) continue
+    if (cell.trap || cell.mimic || cell.memoryWipe) continue
+
+    const onPath = pathSet.has(`${cell.x},${cell.y}`)
+    const neighbors = grid.cells.filter((n) => {
+      const dx = Math.abs(n.x - cell.x)
+      const dy = Math.abs(n.y - cell.y)
+      return (dx + dy === 1)
+    })
+
+    if (onPath) {
+      // on solution: add fake visual walls on open sides to make path look blocked
+      const liar = {}
+      let hasLie = false
+      for (const dir of ['top', 'right', 'bottom', 'left']) {
+        if (!cell.walls[dir] && rng() < 0.3) {
+          liar[dir] = true  // show wall where there isn't one
+          hasLie = true
+        }
+      }
+      if (hasLie) candidates.push({ x: cell.x, y: cell.y, liar, score: 2 })
+    } else {
+      // off solution: hide real walls to make dead ends look like paths
+      const liar = {}
+      let hasLie = false
+      for (const dir of ['top', 'right', 'bottom', 'left']) {
+        if (cell.walls[dir] && rng() < 0.3) {
+          liar[dir] = false  // hide wall that IS there
+          hasLie = true
+        }
+      }
+      if (hasLie) candidates.push({ x: cell.x, y: cell.y, liar, score: 1 })
+    }
+  }
+
+  // sort by score (on-path lies are more valuable)
+  candidates.sort((a, b) => b.score - a.score)
+
+  const placed = Math.min(count, candidates.length)
+  for (let i = 0; i < placed; i++) {
+    grid = setLiarWalls(grid, candidates[i].x, candidates[i].y, candidates[i].liar)
+  }
+
+  return grid
+}
+
+// place mimic tiles — look like exits but kill
+function placeMimics(grid, solutionPath, count, rng) {
+  const pathSet = new Set(solutionPath.map((p) => `${p.x},${p.y}`))
+
+  const candidates = grid.cells.filter((c) => {
+    if (pathSet.has(`${c.x},${c.y}`)) return false
+    if (c.x === grid.start.x && c.y === grid.start.y) return false
+    if (c.x === grid.end.x && c.y === grid.end.y) return false
+    if (c.trap || c.modifier || c.mimic) return false
+    const wallCount = [c.walls.top, c.walls.right, c.walls.bottom, c.walls.left].filter(Boolean).length
+    return wallCount < 4
+  })
+
+  // prefer cells closer to the exit (more deceptive)
+  candidates.sort((a, b) => {
+    const aDist = Math.abs(a.x - grid.end.x) + Math.abs(a.y - grid.end.y)
+    const bDist = Math.abs(b.x - grid.end.x) + Math.abs(b.y - grid.end.y)
+    return aDist - bDist
+  })
+
+  const placed = Math.min(count, candidates.length)
+  for (let i = 0; i < placed; i++) {
+    grid = setMimic(grid, candidates[i].x, candidates[i].y)
+  }
+
+  return grid
+}
+
+// place memory wipe zones — clears fog memory trail
+function placeMemoryWipes(grid, solutionPath, count, rng) {
+  // place on the solution path at key junctions — maximum devastation
+  const candidates = solutionPath.filter((p, i) => {
+    if (i < 5 || i > solutionPath.length - 5) return false
+    const cell = getCell(grid, p.x, p.y)
+    if (!cell || cell.trap || cell.mimic || cell.memoryWipe || cell.modifier) return false
+    return true
+  })
+
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]]
+  }
+
+  const placed = Math.min(count, candidates.length)
+  for (let i = 0; i < placed; i++) {
+    grid = setMemoryWipe(grid, candidates[i].x, candidates[i].y)
   }
 
   return grid
@@ -589,6 +705,17 @@ function generateLevel(levelNumber) {
   // place one-way gates on solution path
   if (era.gateCount > 0) {
     grid = placeGates(grid, solution, era.gateCount, rng)
+  }
+
+  // place information warfare obstacles
+  if (era.liarCount > 0) {
+    grid = placeLiarWalls(grid, solution, era.liarCount, rng)
+  }
+  if (era.mimicCount > 0) {
+    grid = placeMimics(grid, solution, era.mimicCount, rng)
+  }
+  if (era.memoryWipeCount > 0) {
+    grid = placeMemoryWipes(grid, solution, era.memoryWipeCount, rng)
   }
 
   // difficulty scaling
