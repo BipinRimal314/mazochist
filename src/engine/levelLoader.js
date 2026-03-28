@@ -1,6 +1,5 @@
 /**
- * Load ML-generated levels from JSON and convert to game format.
- * Replaces the old 100-level procedural generator with curated ML levels.
+ * Load curated levels — hand-crafted basics + ML-generated curated set.
  */
 
 import { LEVELS as HAND_CRAFTED } from './levels'
@@ -18,6 +17,9 @@ function jsonToGrid(mazeData) {
         modifier: null,
         trap: false,
         gate: null,
+        liarWalls: null,
+        mimic: false,
+        memoryWipe: false,
       })
     }
   }
@@ -42,22 +44,9 @@ function jsonToGrid(mazeData) {
   }
 }
 
-function loadMLLevels(jsonData, chapterName, chapterNumber) {
-  return jsonData.map((level, i) => ({
-    name: level.name || `${chapterName} ${i + 1}`,
-    description: level.description || `Fitness: ${Math.round(level.fitness || 0)}`,
-    chapter: chapterName,
-    chapterNumber,
-    grid: jsonToGrid(level.maze),
-    era: level.era || 'learning',
-    fogRadius: level.fog_radius || null,
-    deathMode: level.death_mode || 'progress',
-  }))
-}
-
 async function loadAllLevels() {
-  // chapter 1: 5 hand-crafted intro levels (keep the best ones)
-  const intro = HAND_CRAFTED.slice(0, 5).map((l) => ({
+  // chapter 1: 3 hand-crafted intro levels (just enough to learn)
+  const intro = HAND_CRAFTED.slice(0, 3).map((l) => ({
     ...l,
     chapter: 'The Basics',
     chapterNumber: 1,
@@ -66,45 +55,38 @@ async function loadAllLevels() {
     deathMode: 'progress',
   }))
 
-  // load ML-generated levels
-  let evolved = []
-  let rlPlaced = []
-
+  // chapters 2-4: curated ML levels
+  let curated = []
   try {
-    const evolvedResp = await fetch('/levels/evolved_50.json')
-    const evolvedData = await evolvedResp.json()
-    evolved = loadMLLevels(evolvedData, 'Evolved', 2)
+    const resp = await fetch('/levels/curated.json')
+    const data = await resp.json()
+
+    let currentChapter = null
+    let chapterNum = 1
+
+    for (const level of data) {
+      const chName = level.name.split(' ').slice(0, -1).join(' ')
+      if (chName !== currentChapter) {
+        chapterNum++
+        currentChapter = chName
+      }
+
+      curated.push({
+        name: level.name,
+        description: level.description,
+        chapter: currentChapter,
+        chapterNumber: chapterNum,
+        grid: jsonToGrid(level.maze),
+        era: level.era || 'learning',
+        fogRadius: level.fog_radius || null,
+        deathMode: level.death_mode || 'progress',
+      })
+    }
   } catch (e) {
-    console.warn('Could not load evolved levels:', e)
+    console.warn('Could not load curated levels:', e)
   }
 
-  try {
-    const rlResp = await fetch('/levels/rl_placed_20.json')
-    const rlData = await rlResp.json()
-    rlPlaced = loadMLLevels(rlData, 'RL-Placed', 3)
-  } catch (e) {
-    console.warn('Could not load RL levels:', e)
-  }
-
-  let vaeCombined = []
-  try {
-    const vaeResp = await fetch('/levels/vae_rl_combined.json')
-    const vaeData = await vaeResp.json()
-    vaeCombined = loadMLLevels(vaeData, 'Neural', 4)
-  } catch (e) {
-    console.warn('Could not load VAE+RL levels:', e)
-  }
-
-  let rlV2 = []
-  try {
-    const rlV2Resp = await fetch('/levels/rl_v2_15.json')
-    const rlV2Data = await rlV2Resp.json()
-    rlV2 = loadMLLevels(rlV2Data, 'Information War', 5)
-  } catch (e) {
-    console.warn('Could not load RL v2 levels:', e)
-  }
-
-  return [...intro, ...evolved, ...rlPlaced, ...vaeCombined, ...rlV2]
+  return [...intro, ...curated]
 }
 
 export { loadAllLevels }

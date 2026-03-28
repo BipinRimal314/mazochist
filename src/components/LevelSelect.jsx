@@ -56,11 +56,10 @@ function LevelSelect({ onSelectLevel, onBuild, allLevels, loading }) {
   }
 
   const chapterDescriptions = {
-    1: '5 levels. learn the controls. enjoy it while it lasts.',
-    2: '12 mazes bred by genetic algorithm over 25,000 simulated playthroughs. sorted by cruelty.',
-    3: '20 mazes where an RL agent learned to place traps for maximum suffering. it watched 10,000 simulated players die.',
-    4: '15 mazes dreamed by a neural network and armed by an RL agent. topology invented, not designed. 67% of simulated players couldn\'t finish these.',
-    5: '15 mazes placed by an agent trained on liar walls, mimics, and memory wipes. it learned to make you distrust everything you see.',
+    1: 'learn the controls. enjoy it while it lasts.',
+    2: 'no fog, but the traps are invisible and the exits lie.',
+    3: 'the fog rolls in. you can\'t see. you can\'t plan. the apparition is watching.',
+    4: 'everything at once. curated by genetic algorithm, armed by reinforcement learning.',
   }
 
   return (
