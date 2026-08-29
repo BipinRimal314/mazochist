@@ -53,72 +53,79 @@ const MIN_SHAPE_DISTANCE = 0.55
  * `terrain` is presentation only — it repaints the board so the journey looks
  * like it is going somewhere, and changes nothing the oracle judges.
  *
+ * `count` is deliberately small. The campaign was 39 and the back half of it
+ * was one board painted six ways: levels 20 to 39 were identical in size, ears,
+ * traps, fog radius and hunter, and the only variable left to introduce was
+ * fading memory. Shape distinctness does not rescue that, because a player
+ * perceives size, threat count and new verbs, not maze topology. Cut to 26, so
+ * that every chapter still has a variable of its own to spend.
+ *
  * The previous version had ten chapters of a hundred levels in its design
- * document and shipped twenty-five that no one had played through. Twenty
+ * document and shipped twenty-five that no one had played through. Twenty-six
  * levels that are all verified beatable is a better game than a hundred that
  * are not.
  */
 const CHAPTERS = [
   {
     name: 'Warm Up',
-    intents: ['artery', 'warren', 'circuit', 'bottleneck'],
+    intents: ['artery', 'warren', 'circuit'],
     terrain: 'field',
     blurb: null,
     tier: 'gentle',
-    count: 4,
+    count: 3,
     seed: 1000,
   },
   {
     name: 'Two Trips',
     teaches: 'traps',
-    intents: ['bottleneck', 'detour', 'gauntlet'],
+    intents: ['circuit', 'bottleneck'],
     terrain: 'track',
     blurb: 'Past the gate, where my land stops being mine.',
     tier: 'brisk',
-    count: 3,
+    count: 2,
     seed: 2000,
   },
-  // Fog arrives at level 8. It is the idea the game is actually about, and
-  // waiting until level 11 spent half the campaign before getting to it.
+  // Fog arrives at level 6. It is the idea the game is actually about, and
+  // anything later spends the campaign before getting to it.
   {
     name: 'First Light',
     teaches: 'fog',
-    intents: ['gauntlet', 'artery', 'warren', 'circuit'],
+    intents: ['bottleneck', 'gauntlet', 'artery'],
     terrain: 'dusk',
     blurb: 'The sun went down somewhere behind me.',
     tier: 'misty',
-    count: 4,
+    count: 3,
     seed: 2500,
   },
   {
     name: 'The Fog',
-    intents: ['circuit', 'bottleneck', 'detour', 'warren'],
+    intents: ['artery', 'circuit'],
     terrain: 'woods',
     blurb: 'Low ground, and the air gone white with it.',
     tier: 'blind',
-    count: 4,
+    count: 2,
     seed: 3000,
   },
-  // The hunter arrives at level 16 the same way fog arrived at level 8: same
+  // The hunter arrives at level 11 the same way fog arrived at level 6: same
   // size, same flags, same traps, same fog radius as the chapter before it. One
   // new variable, so a player who suddenly struggles knows what changed.
   {
     name: 'Company',
     teaches: 'hunter',
-    intents: ['warren', 'bottleneck', 'artery', 'gauntlet'],
+    intents: ['circuit', 'warren', 'bottleneck'],
     terrain: 'night',
     blurb: 'The long field under the ridge.',
     tier: 'hunted',
-    count: 4,
+    count: 3,
     seed: 3500,
   },
   {
     name: 'No Mercy',
-    intents: ['gauntlet', 'circuit', 'detour', 'warren', 'bottleneck'],
+    intents: ['bottleneck', 'gauntlet'],
     terrain: 'ridge',
     blurb: 'Up on the ridge itself. Nothing grows here.',
     tier: 'cruel',
-    count: 5,
+    count: 2,
     seed: 4000,
   },
   // Ground that is not flat earth. Sand first on its own, then snow alongside
@@ -126,21 +133,21 @@ const CHAPTERS = [
   {
     name: 'The Dry Reach',
     teaches: 'sand',
-    intents: ['bottleneck', 'artery', 'circuit'],
+    intents: ['gauntlet', 'artery'],
     terrain: 'desert',
     blurb: 'Flat country. It goes further than it looks.',
     tier: 'dry',
-    count: 3,
+    count: 2,
     seed: 6000,
   },
   {
     name: 'The White Mile',
     teaches: 'snow',
-    intents: ['circuit', 'gauntlet', 'detour'],
+    intents: ['artery', 'detour'],
     terrain: 'snow',
     blurb: 'Higher, and colder than it has any right to be.',
     tier: 'white',
-    count: 3,
+    count: 2,
     seed: 6500,
   },
   // Memory goes by the same rule that governed fog and the hunter: identical
@@ -148,22 +155,22 @@ const CHAPTERS = [
   {
     name: 'Forgetting',
     teaches: 'memory',
-    intents: ['detour', 'warren', 'artery'],
+    intents: ['detour', 'warren'],
     terrain: 'marsh',
     blurb: 'Marsh, and two days now without sleep.',
     tier: 'fading',
-    count: 3,
+    count: 2,
     seed: 4500,
   },
   // Memory keeps tightening: 7.0s -> 4.0s -> 2.5s. The forest is the last
   // strange place before the fires, and the only one lit from the walls in.
   {
     name: 'The Lit Wood',
-    intents: ['artery', 'circuit', 'bottleneck'],
+    intents: ['warren', 'bottleneck'],
     terrain: 'enchanted',
     blurb: 'The wood I have never once walked into.',
     tier: 'enchanted',
-    count: 3,
+    count: 2,
     seed: 5500,
   },
   {

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import {
-  isDone, bestFor, doneCount, unlockedCount,
+  isDone, bestFor, doneCount, unlockedCount, walkedMs,
   speedrunActive, speedrunProgress, parFor, isBeaten,
 } from './progress.js'
 import { isMuted, toggleMuted } from '../engine/sound.js'
@@ -18,8 +18,18 @@ import { isDevMode, toggleDevMode } from './devmode.js'
  * that has not been reached is not drawn at all, because its name gives it away
  * as surely as the tags do.
  *
+ * During the second run it shows something else again: only the fields act two
+ * actually races, one per chapter. Offering the other twenty as well would be
+ * offering levels with no target on them.
+ *
  * Developer mode puts all of it back; see devmode.js.
  */
+function walked(ms) {
+  const total = Math.floor(ms / 1000)
+  const minutes = Math.floor(total / 60)
+  if (minutes < 60) return `${minutes}m ${String(total % 60).padStart(2, '0')}s`
+  return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`
+}
 function Levels({ levels, onPick }) {
   const [muted, setMuted] = useState(isMuted)
   const onToggleSound = useCallback(() => { setMuted(toggleMuted()) }, [])
@@ -41,6 +51,8 @@ function Levels({ levels, onPick }) {
   const chapters = []
   for (const [index, level] of levels.entries()) {
     if (index >= reach) break
+    // in the race, a field with no par is a field with nothing to beat
+    if (racing && !dev && parFor(level.name) == null) continue
     let chapter = chapters[chapters.length - 1]
     if (!chapter || chapter.name !== level.chapter) {
       chapter = { name: level.chapter, blurb: level.blurb, levels: [] }
@@ -49,7 +61,7 @@ function Levels({ levels, onPick }) {
     chapter.levels.push({ ...level, index })
   }
 
-  const remaining = levels.length - reach
+  const remaining = racing ? 0 : levels.length - reach
 
   return (
     <div className="levels">
@@ -60,7 +72,12 @@ function Levels({ levels, onPick }) {
           ? <p className="levels__progress levels__progress--racing">
               running it back &middot; {run.beaten} of {run.total} fields beaten
             </p>
-          : done > 0 && <p className="levels__progress">{done} of {levels.length} escaped</p>}
+          : done > 0 && (
+              <p className="levels__progress">
+                {done} of {levels.length} escaped
+                <span className="levels__walked"> &middot; walked {walked(walkedMs())}</span>
+              </p>
+            )}
         <button
           className="levels__sound"
           onClick={onToggleSound}

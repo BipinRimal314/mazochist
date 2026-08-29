@@ -12,7 +12,7 @@ import {
 } from './ui/story.js'
 import {
   hasSeen, markSeen, startSpeedrun, hydrate, flushProgress,
-  speedrunActive, speedrunComplete, finishSpeedrun, concedeSpeedrun,
+  speedrunActive, speedrunComplete, finishSpeedrun, concedeSpeedrun, parFor,
 } from './ui/progress.js'
 
 const BASE = import.meta.env?.BASE_URL || '/'
@@ -118,6 +118,22 @@ function App() {
     }
 
     if (isLastLevel) { setFinished(true); setCurrent(null); return }
+
+    /*
+     * Act two races one field per chapter, not all of them, so "next" there
+     * means the next field that has a time to beat — walking the player
+     * through the twenty in between would be handing them levels with no
+     * target on them.
+     */
+    if (speedrunActive()) {
+      const nextRaced = levels.findIndex(
+        (level, i) => i > current && parFor(level.name) != null
+      )
+      if (nextRaced === -1) { setFinished(true); setCurrent(null); return }
+      setCurrent(nextRaced)
+      return
+    }
+
     setCurrent(current + 1)
   }, [current, levels])
 

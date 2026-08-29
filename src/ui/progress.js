@@ -118,6 +118,18 @@ function totals() {
   }
 }
 
+/**
+ * How long he has been walking: the sum of the player's best time on every
+ * field cleared so far.
+ *
+ * On screen from the first field onward, on purpose. Act two turns on the
+ * player having been slow, and a game may only judge a number it showed you.
+ * This is that number, and it is the one act two freezes as par.
+ */
+function walkedMs() {
+  return Object.values(read().done).reduce((sum, run) => sum + run.ms, 0)
+}
+
 /** Ears of maize picked, counted only from levels actually finished. */
 function maizeCollected(levels) {
   const store = read()
@@ -137,11 +149,30 @@ function markSeen(id) {
 
 // ------------------------------------------------------------------ speedrun
 
+/**
+ * The fields act two actually races: the last one of every chapter.
+ *
+ * Act two used to demand all of them again. That is the moment the game is most
+ * likely to lose a player — they have just been told they were too slow, and
+ * the reply is another full campaign. One field per chapter keeps the shape of
+ * the walk (every stretch of the trail is run again, in order, and the last
+ * field of a chapter is the one whose beat the player just heard) while making
+ * the run something a person will actually finish.
+ *
+ * Derived from the level list rather than named, so re-cutting the campaign
+ * cannot leave this pointing at fields that no longer exist.
+ */
+function speedrunFields(levels) {
+  return levels.filter(
+    (level, i) => i === levels.length - 1 || levels[i + 1].chapter !== level.chapter
+  )
+}
+
 /** Freeze the current bests as the times to beat, and start the second run. */
 function startSpeedrun(levels) {
   const store = read()
   const par = {}
-  for (const level of levels) {
+  for (const level of speedrunFields(levels)) {
     const best = store.done[level.name]
     if (best) par[level.name] = best.ms
   }
@@ -196,10 +227,10 @@ function resetCache() {
 
 export {
   hydrate, flushProgress,
-  recordWin, isDone, bestFor, doneCount, totals, maizeCollected,
+  recordWin, isDone, bestFor, doneCount, totals, maizeCollected, walkedMs,
   unlockedCount, isUnlocked,
   hasSeen, markSeen,
-  startSpeedrun, speedrunActive, speedrunFinished, speedrunComplete,
+  startSpeedrun, speedrunFields, speedrunActive, speedrunFinished, speedrunComplete,
   speedrunGaveUp, concedeSpeedrun,
   speedrunProgress, parFor, beatenTime, isBeaten, finishSpeedrun,
   resetCache, STORAGE_KEY,

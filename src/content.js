@@ -73,7 +73,9 @@ const CHAPTER_BEATS = {
     lines: [
       n('Further out than my land goes, now. I have not stopped to think about that.'),
       v('…leave the sacks. take the girl.'),
+      v('…first light, then. all three carts, first light.'),
       n('I am gathering what fell. That is all this is.'),
+      n('There is a whole night between here and first light. That is plenty.'),
       v('…i’m dropping them where you’ll look, papa…'),
     ],
   },
@@ -195,8 +197,9 @@ const TOO_LATE = {
   lines: [
     n('He counts it. Of course he does. He has been counting the whole way — I have been hearing him count since the ridge.'),
     n('Then he counts it again, slower, watching me the whole time. Then he smiles.'),
-    v('"Too late, farmer. She went out with the first cart, hours back."'),
-    v('"If only you were faster. You could have saved her."'),
+    v('"First light, farmer. You heard us say it the night you crossed your own gate."'),
+    v('"She went out on the first cart. You walked it like a man with a night to spare."'),
+    n('I had a night to spare. I have been counting it too.'),
   ],
   action: 'go back. be faster.',
 }
@@ -205,8 +208,9 @@ const SPEEDRUN_BRIEF = {
   id: 'speedrun-brief',
   title: 'Faster, then',
   lines: [
-    n('Every field again. All of it again, in the dark, with the thing that follows and the ground that closes.'),
-    n('And quicker than I walked it the first time. Every single one.'),
+    n('Not all of it again. There is no night left for all of it again.'),
+    n('The worst field of every stretch, in the dark, with the thing that follows and the ground that closes — and each one quicker than I walked it the first time.'),
+    n('That is the whole of it. Eleven fields and a night.'),
     v('papa'),
     n('Ahead of me, this time.'),
   ],
@@ -257,12 +261,13 @@ const LOST_HER = {
  * right way to deliver a thing that is supposed to feel half-heard — and it
  * puts a hint inside the game rather than only between the levels of it.
  *
- * Keyed by level name, at most one per level, and deliberately sparse: eight
- * across thirty levels, so hearing one stays an event.
+ * Keyed by level name, at most one per level, and deliberately sparse: twelve
+ * across twenty-six levels, so hearing one stays an event.
  */
 const WHISPERS = {
   'Warm Up 2': '…where did she go…',
   'Two Trips 1': '…they came up the west track…',
+  'Two Trips 2': '…first light, he said. first light…',
   'First Light 2': '…count them. count them, papa…',
   'The Fog 1': '…she’s still dropping them…',
   'Company 2': '…don’t look back…',

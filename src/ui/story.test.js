@@ -4,7 +4,7 @@ import {
   recordWin, bestFor, hasSeen, markSeen, maizeCollected,
   startSpeedrun, speedrunActive, speedrunComplete, speedrunProgress,
   parFor, isBeaten, finishSpeedrun, speedrunFinished, resetCache, hydrate,
-  unlockedCount, isUnlocked, speedrunGaveUp, concedeSpeedrun,
+  unlockedCount, isUnlocked, speedrunGaveUp, concedeSpeedrun, speedrunFields,
 } from './progress.js'
 import { isDevMode, setDevMode, initDevMode } from './devmode.js'
 import {
@@ -64,12 +64,22 @@ describe('story beats', () => {
   })
 
   it('reveals the hat only after the player has moved it for a while', () => {
-    // the reveal lands as a payoff or not at all; it must not be in chapter one
+    /*
+     * The reveal lands as a payoff or not at all. Expressed as a fraction of
+     * the campaign rather than an absolute level number, because the campaign
+     * gets re-cut: the debt is "long enough to have stopped noticing the yellow
+     * shape", which is a proportion of the walk, not a count of fields.
+     *
+     * A chapter beat fires after its *last* level, so that is the index that
+     * decides when the player hears it.
+     */
     const revealChapter = Object.entries(CHAPTER_BEATS)
       .find(([, beat]) => beat.lines.some((l) => l.text.includes('my hat')))?.[0]
     expect(revealChapter).toBeTruthy()
-    const firstLevel = levels.findIndex((l) => l.chapter === revealChapter)
-    expect(firstLevel).toBeGreaterThan(10)
+    const lastLevel = levels.findLastIndex((l) => l.chapter === revealChapter)
+    const through = (lastLevel + 1) / levels.length
+    expect(through, 'too early to be a payoff').toBeGreaterThan(0.35)
+    expect(through, 'too late — most players will never hear it').toBeLessThan(0.75)
   })
 
   it('is shown once and then remembered', async () => {
@@ -143,9 +153,42 @@ describe('the maize tally', () => {
 })
 
 describe('the speedrun', () => {
+  // act two races the last field of every chapter, not the whole campaign
+  const raced = speedrunFields(levels)
+
   function finishCampaign(ms = 20000) {
     for (const level of levels) recordWin(level.name, { deaths: 1, ms })
   }
+
+  it('promises act two the length act two actually is', () => {
+    /*
+     * The brief tells the player how many fields are left. It is prose, so
+     * nothing else makes it true — and a campaign re-cut changes the number
+     * without touching the sentence. Guard it.
+     */
+    const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+      'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen']
+    const said = SPEEDRUN_BRIEF.lines
+      .flatMap((line) => line.text.toLowerCase().match(/[a-z]+/g) ?? [])
+      .filter((word) => words.includes(word))
+      .map((word) => words.indexOf(word) + 1)
+    expect(said, 'the brief should name how many fields are left').toContain(raced.length)
+  })
+
+  it('races one field per chapter, and only those', () => {
+    finishCampaign()
+    startSpeedrun(levels)
+
+    const chapters = [...new Set(levels.map((l) => l.chapter))]
+    expect(raced).toHaveLength(chapters.length)
+    expect(raced.map((l) => l.chapter)).toEqual(chapters)
+
+    // it is the field whose chapter beat the player just heard
+    for (const level of raced) expect(parFor(level.name)).not.toBeNull()
+    const rest = levels.filter((l) => !raced.includes(l))
+    expect(rest.length, 'act two should be shorter than act one').toBeGreaterThan(0)
+    for (const level of rest) expect(parFor(level.name)).toBeNull()
+  })
 
   it('is not running until the bargain starts it', () => {
     finishCampaign()
@@ -157,23 +200,23 @@ describe('the speedrun', () => {
   it('freezes the times to beat at the moment it starts', () => {
     finishCampaign(20000)
     startSpeedrun(levels)
-    expect(parFor(levels[0].name)).toBe(20000)
+    expect(parFor(raced[0].name)).toBe(20000)
 
     // improving afterwards must not drag the target down with it
-    recordWin(levels[0].name, { deaths: 0, ms: 12000 })
-    expect(parFor(levels[0].name), 'the target moved').toBe(20000)
-    expect(bestFor(levels[0].name).ms).toBe(12000)
+    recordWin(raced[0].name, { deaths: 0, ms: 12000 })
+    expect(parFor(raced[0].name), 'the target moved').toBe(20000)
+    expect(bestFor(raced[0].name).ms).toBe(12000)
   })
 
   it('counts a level as beaten only when the run is genuinely faster', () => {
     finishCampaign(20000)
     startSpeedrun(levels)
 
-    recordWin(levels[0].name, { deaths: 0, ms: 20000 })
-    expect(isBeaten(levels[0].name), 'a tie is not faster').toBe(false)
+    recordWin(raced[0].name, { deaths: 0, ms: 20000 })
+    expect(isBeaten(raced[0].name), 'a tie is not faster').toBe(false)
 
-    recordWin(levels[0].name, { deaths: 0, ms: 19999 })
-    expect(isBeaten(levels[0].name)).toBe(true)
+    recordWin(raced[0].name, { deaths: 0, ms: 19999 })
+    expect(isBeaten(raced[0].name)).toBe(true)
   })
 
   it('is only complete when every field has been beaten', () => {
@@ -181,34 +224,34 @@ describe('the speedrun', () => {
     startSpeedrun(levels)
     expect(speedrunComplete(levels)).toBe(false)
 
-    for (const level of levels.slice(0, -1)) {
+    for (const level of raced.slice(0, -1)) {
       recordWin(level.name, { deaths: 0, ms: 5000 })
     }
-    expect(speedrunProgress(levels)).toEqual({ beaten: levels.length - 1, total: levels.length })
+    expect(speedrunProgress(levels)).toEqual({ beaten: raced.length - 1, total: raced.length })
     expect(speedrunComplete(levels), 'one field short still counts as complete').toBe(false)
 
-    recordWin(levels[levels.length - 1].name, { deaths: 0, ms: 5000 })
+    recordWin(raced[raced.length - 1].name, { deaths: 0, ms: 5000 })
     expect(speedrunComplete(levels)).toBe(true)
   })
 
   it('does not count a level that was never finished the first time', () => {
     // no par means no race: it cannot be beaten and cannot block the ending
-    recordWin(levels[0].name, { deaths: 0, ms: 9000 })
+    recordWin(raced[0].name, { deaths: 0, ms: 9000 })
     startSpeedrun(levels)
     expect(speedrunProgress(levels).total).toBe(1)
-    expect(parFor(levels[1].name)).toBeNull()
+    expect(parFor(raced[1].name)).toBeNull()
   })
 
   it('survives a reload mid-run', async () => {
     finishCampaign(20000)
     startSpeedrun(levels)
-    recordWin(levels[0].name, { deaths: 0, ms: 8000 })
+    recordWin(raced[0].name, { deaths: 0, ms: 8000 })
 
     resetCache()
     await hydrate()
     expect(speedrunActive()).toBe(true)
-    expect(parFor(levels[0].name)).toBe(20000)
-    expect(isBeaten(levels[0].name)).toBe(true)
+    expect(parFor(raced[0].name)).toBe(20000)
+    expect(isBeaten(raced[0].name)).toBe(true)
   })
 
   it('records the rescue at the end', () => {
