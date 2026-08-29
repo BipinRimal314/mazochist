@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { createGame, restartGame } from '../engine/game.js'
+import { assist, setAssist } from '../engine/assist.js'
 import { recordWin, parFor, speedrunActive } from './progress.js'
 import {
   playSound, isMuted, toggleMuted, playStep, getVolume, setVolume,
@@ -54,7 +55,7 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
 
   const gameRef = useRef(null)
   if (gameRef.current === null) {
-    const game = createGame(level.grid)
+    const game = createGame(level.grid, assist())
     game.onSound = playSound
     game.onStep = playStep
     game.onWin = () => {
@@ -140,6 +141,18 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
   const togglePause = useCallback(() => { pause(!game.paused) }, [game, pause])
 
   const onToggleSound = useCallback(() => { setMuted(toggleMuted()) }, [])
+
+  /*
+   * The assist dials.
+   *
+   * Changing one mid-field takes effect on the next attempt rather than this
+   * one: `game.assist` is read by the hunter at the moment it is built, and
+   * quietly slowing something that is already chasing you would be the game
+   * changing its own rules mid-run. Restarting the field is one button away and
+   * the menu says so.
+   */
+  const [help, setHelp] = useState(assist)
+  const onAssist = useCallback((patch) => { setHelp(setAssist(patch)) }, [])
 
   const [volume, setVol] = useState(getVolume)
   const onVolume = useCallback((e) => {
@@ -328,6 +341,39 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
                 />
               </label>
               <button className="btn" onClick={onBack}>back to levels</button>
+
+              <div className="menu__assist">
+                <span className="menu__assist-title">make it kinder</span>
+                <label className="menu__toggle">
+                  <input
+                    type="checkbox"
+                    checked={help.steadyBoard}
+                    onChange={(e) => onAssist({ steadyBoard: e.target.checked })}
+                  />
+                  <span>hold the board steady</span>
+                </label>
+                <label className="menu__slider">
+                  <span>see further</span>
+                  <input
+                    type="range" min="0" max="3" step="1"
+                    value={help.fogBonus}
+                    onChange={(e) => onAssist({ fogBonus: Number(e.target.value) })}
+                    aria-label="how much further you can see"
+                  />
+                </label>
+                <label className="menu__slider">
+                  <span>ghost hangs back</span>
+                  <input
+                    type="range" min="0.5" max="1" step="0.1"
+                    value={1.5 - help.ghostPace}
+                    onChange={(e) => onAssist({ ghostPace: 1.5 - Number(e.target.value) })}
+                    aria-label="how far the ghost hangs back"
+                  />
+                </label>
+                <span className="menu__assist-note">
+                  takes effect next go &middot; every field is still beatable
+                </span>
+              </div>
             </div>
             <span className="board__hint">P resume · R restart · Esc levels</span>
           </div>

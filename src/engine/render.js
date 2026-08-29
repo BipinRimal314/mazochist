@@ -549,7 +549,8 @@ function drawFog(ctx, game, cellSize) {
 
   const bx = ball.x * cellSize
   const by = ball.y * cellSize
-  const radius = grid.fog * cellSize
+  // assist widens the hole and nothing else; the fog was never in the proof
+  const radius = (grid.fog + game.assist.fogBonus) * cellSize
   const gradient = fctx.createRadialGradient(bx, by, 0, bx, by, radius)
   gradient.addColorStop(0, 'rgba(0,0,0,1)')
   gradient.addColorStop(0.62, 'rgba(0,0,0,1)')

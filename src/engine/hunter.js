@@ -74,7 +74,13 @@ const WAKE_WARNING_MS = 2500
 
 const HUNTER_RADIUS = 0.3
 
-function createHunter(grid) {
+/**
+ * @param {number} pace  share of its own speed the hunter is allowed, from the
+ *                       player's assist settings. 1 is the game as designed and
+ *                       the only value any solver ever passes; lower only ever
+ *                       makes the level easier, so the beatability proof holds.
+ */
+function createHunter(grid, pace = 1) {
   if (!grid.hunter) return null
   return {
     x: 0,
@@ -82,7 +88,7 @@ function createHunter(grid) {
     active: false,
     spawnMs: grid.hunter.spawnMs,
     wakesAt: grid.hunter.spawnMs,
-    speed: Math.min(grid.hunter.speed, hunterSpeedCap(grid)),
+    speed: Math.min(grid.hunter.speed, hunterSpeedCap(grid)) * pace,
     radius: HUNTER_RADIUS,
     field: null,        // BFS distances from the player's cell
     fieldFrom: null,    // the cell that field was computed from

@@ -34,6 +34,7 @@
 import { createBall, resetBall, stepBall, ballCell } from './physics.js'
 import { key, trapSet, flagSet, surfaceAt } from './grid.js'
 import { createHunter, sleepHunter, stepHunter } from './hunter.js'
+import { NEUTRAL } from './assist.js'
 /*
  * Every word the player reads lives in src/content.js, including these. The
  * engine imports them rather than holding them so that changing what the farmer
@@ -49,9 +50,17 @@ const TRAIL_LENGTH = 14
 const RESPAWN_FLASH_MS = 450
 const CAPTURE_FLASH_MS = 700
 
-function createGame(grid) {
+/**
+ * @param {object} grid
+ * @param {object} assist  the player's help settings. Defaults to NEUTRAL, and
+ *                         the solvers pass nothing — so what is judged during
+ *                         generation is always the game as designed, whatever
+ *                         this player has turned on. See engine/assist.js.
+ */
+function createGame(grid, assist = NEUTRAL) {
   return {
     grid,
+    assist,
     ball: createBall(grid),
     input: { up: false, down: false, left: false, right: false },
 
@@ -66,7 +75,7 @@ function createGame(grid) {
     captured: new Set(),
     exitOpen: grid.flags.length === 0,
 
-    hunter: createHunter(grid),
+    hunter: createHunter(grid, assist.ghostPace),
 
     // cell -> the game time you were last standing in it. A Map rather than a
     // Set because on `memory` levels the trail behind you fades with age, so
@@ -119,7 +128,7 @@ function quipFor(game) {
 /** A trap. Costs the walk back and nothing else — picked maize is never lost. */
 function die(game, at) {
   game.deaths += 1
-  game.shake = 240
+  game.shake = game.assist.steadyBoard ? 0 : 240
   resetBall(game.ball, game.grid)
   // back at the start, so the hunter loses interest and its clock restarts
   sleepHunter(game.hunter, game.now)
@@ -139,7 +148,7 @@ function die(game, at) {
  */
 function lose(game, at) {
   game.lost = true
-  game.shake = 420
+  game.shake = game.assist.steadyBoard ? 0 : 420
   game.flash = { x: at.x, y: at.y, until: game.now + RESPAWN_FLASH_MS, kind: 'trap' }
   game.quip = CAUGHT_QUIPS[(game.quipOffset + game.deaths + 1) % CAUGHT_QUIPS.length]
   emit(game, 'caught')
@@ -229,7 +238,7 @@ function stepGame(game) {
 function restartGame(game) {
   resetBall(game.ball, game.grid)
   game.now = 0
-  game.hunter = createHunter(game.grid)
+  game.hunter = createHunter(game.grid, game.assist.ghostPace)
   game.won = false
   game.lost = false
   game.deaths = 0

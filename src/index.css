@@ -621,6 +621,51 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .menu__slider input { flex: 1; accent-color: var(--flag); cursor: pointer; }
 .menu__slider input:disabled { opacity: 0.35; cursor: default; }
 
+/*
+ * The assist dials, set apart from the buttons above them by a rule rather than
+ * hidden behind another menu. Somebody who needs these is somebody who is close
+ * to putting the game down, and one more click is one more chance to.
+ */
+.menu__assist {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--rule, rgba(0, 0, 0, 0.12));
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.menu__assist-title,
+.menu__assist-note {
+  font-family: var(--display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  opacity: 0.75;
+}
+.menu__assist-note { text-transform: none; letter-spacing: 0.02em; opacity: 0.55; }
+.menu__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.menu__toggle input { accent-color: var(--flag); cursor: pointer; }
+
+/*
+ * The board's own jolt is not CSS — it is a canvas transform, defaulted off for
+ * a system that asks for less motion in engine/assist.js, and overridable in
+ * both directions from the menu above.
+ */
+
 /* the line still being typed carries the cursor */
 .story__narrator.is-typing::after,
 .story__voice.is-typing::after {
