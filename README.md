@@ -502,6 +502,77 @@ and the d-pad can be tested without a controller.
 Master volume sits in the pause menu beside the mute toggle, remembered across
 sessions.
 
+## Lit from within
+
+Every ground is dark and every wall emits light. Not a mood choice — it is what
+the game already was and had not admitted.
+
+Most of the board is under fog at any moment, and fog over a cream page can only
+ever be a grey smear laid on top of a drawing. Fog over a dark ground is simply
+the dark you have not reached yet, which is the thing the fiction spends eleven
+chapters describing. The Lit Wood was drawn this way first and was, by a
+distance, the only board in the game that looked designed; this is that
+chapter's principle taken everywhere, with a hue per terrain so the journey
+still visibly moves.
+
+The decision it replaces was "commission tilesets", four weeks and real money.
+Look at any fogged shot from `npm run shots`: seventy to ninety per cent of the
+board is masked. Illustrated tiles would have bought detail the game
+deliberately denies the player.
+
+### The hierarchy was upside down
+
+Ranked by how loud each thing was on screen, before:
+
+| loudest first | what it is | how much it matters |
+|---|---|---|
+| start marker | saturated tile, white ▶ glyph | irrelevant two seconds in |
+| maize | shaded illustrated sprite | important |
+| the ball | 12px dot with a highlight | *the whole game* |
+| exit | pale grey ⊠ on cream | ends the level |
+
+The exit was the lowest-contrast object in the game. Now: the start is a dim
+ring, the exit is lit and breathes, the maize is drawn rather than blitted, and
+the ball is a hat.
+
+### The ball is a hat
+
+Chapter five spends the entire emotional payload of the game on this shape — *it
+is my hat, and it is the only part of me that has kept going in a straight
+line*. For thirteen levels before that it was a circle with a specular
+highlight, which is to say a token, and a reveal only lands on a shape somebody
+had already been looking at.
+
+It carries a near-white catchlight because four of the eleven grounds light
+their walls in amber, and on those an amber hat is a warm shape among warm
+shapes. Wherever the player is, the brightest thing on screen is them.
+
+All of its ink stays inside `fillRadius`. The physics clamps the centre to
+exactly one radius from a wall, so ink outside that radius reads as clipping
+through a wall that is in fact colliding exactly — `ballDrawMetrics` exists so a
+test can assert that relationship instead of someone eyeballing a screenshot.
+
+### The maize is drawn, not blitted
+
+It was an illustrated PNG, and on a board of flat strokes it read as a sticker
+dropped on a diagram — the one object in the game with shading, among lines with
+no shading anywhere. On a lit ground it would have been the only thing not made
+of light. It is geometry now: two flat tones, a husk, three kernel rows and a
+bloom in the same idiom as the walls. Any more detail than that smears at the
+size a cell actually gets.
+
+The sprite is still used in the story cards and the trail map, where it is large
+and sits on paper rather than on the board. It was never wrong there.
+
+### In the field, it is night
+
+The play screen takes a dark palette; the level list, the story cards and the
+trail map stay warm paper. Every token is a re-point of the variable the light
+theme already sets, so no element on that screen needed a second rule.
+
+The split is not only pragmatic. The cards are his voice, remembered and written
+down. The field is the dark he is actually walking through.
+
 ## Making it kinder without making it a lie
 
 The pause menu has three dials — **hold the board steady**, **see further**,

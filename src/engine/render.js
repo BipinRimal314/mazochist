@@ -15,27 +15,27 @@
 
 import { TOP, RIGHT, BOTTOM, LEFT, wallsAt, key, SAND, SNOW } from './grid.js'
 import { wakeProgress } from './hunter.js'
-import maizeUrl from '../assets/maize.png'
 
 const COLORS = {
-  bg: '#fdf6e6',
-  grid: '#efe6cf',
-  wall: '#33302a',
-  start: '#0d656e',
-  exit: '#1b8f5a',
-  exitLocked: '#b3ad9c',
-  flag: '#f6e7c8',          // a pale patch, so the outlined ear reads on top of it
-  flagTaken: '#ded6c2',
-  maize: '#f5a623',          // fallback cob, only while the sprite decodes
-  maizeHusk: '#57a93f',
-  ball: '#fdd835',
-  ballRim: '#ffffff',
-  ballShine: 'rgba(255,255,255,0.5)',
-  trapFlash: '#e53935',
-  captureFlash: '#f2b01e',
-  fog: '48, 45, 38',
-  hunter: '#5b2333',
-  hunterEye: '#fdf6e6',
+  start: '#2f6f74',
+  startGlyph: 'rgba(255,255,255,0.35)',
+  exit: '#48e08a',
+  exitGlow: 'rgba(72, 224, 138, 0.8)',
+  exitLocked: '#4a4a44',
+  maize: '#f7b733',
+  maizeDeep: '#d8901a',
+  maizeHusk: '#5fae4a',
+  maizeGlow: 'rgba(247, 183, 51, 0.7)',
+  maizeTaken: 'rgba(255,255,255,0.16)',
+  hat: '#ffd23f',
+  hatHot: '#fffbe8',
+  hatBand: '#7a4a12',
+  hatRim: 'rgba(255, 240, 190, 0.9)',
+  hatGlow: 'rgba(255, 210, 63, 0.85)',
+  trapFlash: '#ff5347',
+  captureFlash: '#ffc53d',
+  hunter: '#f2f0ff',
+  hunterEye: '#241426',
   hunterAura: '229, 57, 53',
 }
 
@@ -43,28 +43,38 @@ const COLORS = {
  * Terrain: the ground a chapter is walked over.
  *
  * Presentation only — it repaints the board and nothing else, so no level's
- * proof depends on it. Only the ground, the grid lines, the walls and the fog
- * change; the start, the exit, the maize and the ball keep their colours on
- * every terrain, because those four are how the player reads the board and
- * re-tinting them per chapter would be re-teaching the vocabulary every time
- * the scenery changed.
+ * proof depends on it.
+ *
+ * LIT FROM WITHIN
+ *
+ * Every ground here is dark and every wall emits light. That is not a mood
+ * choice, it is what the game already is: most of the board is under fog at any
+ * moment, and fog over a cream page can only ever be a grey smear laid on top
+ * of a drawing. Fog over a dark ground is simply the dark you have not reached
+ * yet, which is the thing the fiction has been describing for eleven chapters.
+ *
+ * The Lit Wood was drawn this way first and was, by a distance, the only board
+ * in the game that looked designed. This is that chapter's principle taken
+ * everywhere, with a hue per terrain so the journey still visibly moves.
+ *
+ * The start, the exit, the maize and the ball keep their own colours on every
+ * terrain — those four are how the player reads the board, and re-tinting them
+ * per chapter would re-teach the vocabulary every time the scenery changed.
  */
 const TERRAINS = {
-  field: { bg: '#fdf6e6', grid: '#efe6cf', wall: '#33302a', fog: '48, 45, 38' },
-  track: { bg: '#f6ecd9', grid: '#e6d8bd', wall: '#4a3b2a', fog: '52, 42, 30' },
-  dusk:  { bg: '#eae5e2', grid: '#dbd3d2', wall: '#3b3340', fog: '42, 38, 52' },
-  woods: { bg: '#e6eadf', grid: '#d5dcca', wall: '#2f3a2c', fog: '30, 40, 30' },
-  night: { bg: '#dfe2ea', grid: '#ccd2de', wall: '#2b3040', fog: '22, 26, 40' },
-  ridge: { bg: '#e9e7e2', grid: '#d8d5cd', wall: '#3a3833', fog: '38, 37, 34' },
-  marsh: { bg: '#e2e6dc', grid: '#cfd6c6', wall: '#33382f', fog: '28, 34, 28' },
-  ember: { bg: '#f2e4dc', grid: '#e2cfc4', wall: '#43302a', fog: '48, 28, 22' },
+  field:  { bg: '#14100a', grid: '#221b10', wall: '#f0b357', glow: 'rgba(240, 179, 87, 0.70)', fog: '10, 8, 5' },
+  track:  { bg: '#17110a', grid: '#251c11', wall: '#e0a049', glow: 'rgba(224, 160, 73, 0.65)', fog: '12, 9, 5' },
+  dusk:   { bg: '#100e1a', grid: '#1c1930', wall: '#b9a8e8', glow: 'rgba(185, 168, 232, 0.70)', fog: '8, 7, 14' },
+  woods:  { bg: '#0b120d', grid: '#152018', wall: '#a8cf9a', glow: 'rgba(168, 207, 154, 0.65)', fog: '5, 9, 6' },
+  night:  { bg: '#0a0e1a', grid: '#141a2c', wall: '#a8c4e8', glow: 'rgba(168, 196, 232, 0.70)', fog: '5, 7, 13' },
+  ridge:  { bg: '#121316', grid: '#1e2026', wall: '#e6e2d6', glow: 'rgba(230, 226, 214, 0.60)', fog: '9, 10, 12' },
+  marsh:  { bg: '#0a1010', grid: '#14201c', wall: '#8fbf8a', glow: 'rgba(143, 191, 138, 0.60)', fog: '5, 8, 8' },
+  ember:  { bg: '#170a08', grid: '#26120d', wall: '#ff8a4c', glow: 'rgba(255, 138, 76, 0.75)', fog: '11, 5, 4' },
 
-  desert: { bg: '#faeed3', grid: '#ecdcb4', wall: '#6b4a25', fog: '58, 44, 24' },
-  snow:   { bg: '#eef3f8', grid: '#dbe5ef', wall: '#3c4655', fog: '30, 40, 54' },
+  desert: { bg: '#1a1008', grid: '#2a1c0e', wall: '#f5c169', glow: 'rgba(245, 193, 105, 0.70)', fog: '13, 8, 4' },
+  snow:   { bg: '#0a1220', grid: '#142034', wall: '#dcecff', glow: 'rgba(220, 236, 255, 0.70)', fog: '5, 9, 16' },
 
-  // The one dark terrain. Everywhere else is daylight or dusk seen through
-  // fog; here the ground itself is black and the walls are the only light in
-  // it. `glow` turns the walls into neon — see the bloom pass in `drawMaze`.
+  // where it started: the coldest light in the game, and the only green one
   enchanted: {
     bg: '#0d0b1a',
     grid: '#1b1733',
@@ -86,14 +96,14 @@ const terrainOf = (grid) => TERRAINS[grid?.terrain] ?? TERRAINS.field
  * place, not an object sitting on the board.
  */
 const SURFACE_TINTS = {
-  [SAND]: 'rgba(232, 168, 56, 0.30)',
-  [SNOW]: 'rgba(150, 200, 240, 0.34)',
+  [SAND]: 'rgba(232, 168, 56, 0.16)',
+  [SNOW]: 'rgba(150, 200, 240, 0.18)',
 }
 
 /** The same colours at full strength, for the outline. */
 const SURFACE_EDGES = {
-  [SAND]: 'rgba(214, 138, 20, 0.85)',
-  [SNOW]: 'rgba(96, 168, 226, 0.85)',
+  [SAND]: 'rgba(245, 190, 95, 0.75)',
+  [SNOW]: 'rgba(160, 215, 255, 0.75)',
 }
 
 function drawSurfaces(ctx, grid, cellSize) {
@@ -191,80 +201,61 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
-function marker(ctx, x, y, cellSize, color) {
-  const inset = cellSize * MARKER_INSET
-  ctx.fillStyle = color
-  roundRect(ctx, x * cellSize + inset, y * cellSize + inset,
-    cellSize - inset * 2, cellSize - inset * 2, cellSize * 0.2)
-  ctx.fill()
-}
 
 /**
- * The maize sprite.
+ * One ear of maize, drawn rather than blitted.
  *
- * Hand-drawing this was a mistake — a cob rendered from arcs and a crosshatch
- * reads as a smear at the sizes a cell actually gets. An illustrated sprite
- * carries the detail for free and costs one decode.
+ * This used to be an illustrated PNG, and on a board made of flat strokes it
+ * read as a sticker dropped on a diagram — a shaded, textured object among
+ * lines with no shading anywhere else. It was the one thing in the game that
+ * looked like it came from somewhere else, and on the dark grounds it would be
+ * the only thing not made of light.
  *
- * The image is loaded once, lazily, and every draw is guarded on it being
- * decoded: `drawImage` with an incomplete image throws in some browsers and
- * silently paints nothing in others, and the board draws sixty times a second
- * from the moment the level mounts.
+ * So it is geometry now, in the board's own language: two flat tones, a husk,
+ * and a bloom in the same idiom as the walls. The sprite is still used in the
+ * story cards and the trail map, where it is big and sits on paper rather than
+ * on the board — it was never wrong there.
  */
-let maizeImage = null
-
-function loadMaize() {
-  if (maizeImage || typeof Image === 'undefined') return maizeImage
-  maizeImage = new Image()
-  maizeImage.decoding = 'async'
-  maizeImage.src = maizeUrl
-  return maizeImage
-}
-
-/** Whether the sprite can be painted this frame. */
-const maizeReady = () => Boolean(maizeImage && maizeImage.complete && maizeImage.naturalWidth > 0)
-
-/**
- * Override the sprite. The app never calls this; it is the seam the tests use
- * to exercise both the painted and the not-yet-decoded branch, neither of which
- * a headless canvas would otherwise reach.
- */
-function setMaizeImage(image) {
-  maizeImage = image
-}
-
 const MAIZE_SCALE = 0.86
 
-/**
- * One ear of maize, filling most of its cell.
- *
- * Falls back to a plain cob while the sprite is still decoding, so a slow
- * connection shows a dull ear rather than an empty square — an empty square
- * reads as "nothing here", which is a lie about a cell you have to reach.
- */
 function drawMaizeIcon(ctx, x, y, cellSize) {
-  const image = loadMaize()
-  const size = cellSize * MAIZE_SCALE
-  const px = (x + 0.5) * cellSize - size / 2
-  const py = (y + 0.5) * cellSize - size / 2
-
-  if (maizeReady()) {
-    ctx.drawImage(image, px, py, size, size)
-    return
-  }
-
   const s = cellSize
+  const cx = (x + 0.5) * s
+  const cy = (y + 0.5) * s
+  const r = s * MAIZE_SCALE * 0.5
+
   ctx.save()
-  ctx.translate((x + 0.5) * s, (y + 0.5) * s)
-  ctx.rotate(0.42)
+  ctx.translate(cx, cy)
+  ctx.rotate(-0.38)
+
+  ctx.shadowColor = COLORS.maizeGlow
+  ctx.shadowBlur = s * 0.32
+
+  // husk, one leaf swept back off the cob
   ctx.fillStyle = COLORS.maizeHusk
   ctx.beginPath()
-  ctx.ellipse(-0.10 * s, 0.06 * s, 0.10 * s, 0.28 * s, 0, 0, Math.PI * 2)
+  ctx.ellipse(-r * 0.42, r * 0.16, r * 0.26, r * 0.66, -0.24, 0, Math.PI * 2)
   ctx.fill()
+
+  // the cob
   ctx.fillStyle = COLORS.maize
   ctx.beginPath()
-  ctx.ellipse(0, -0.04 * s, 0.145 * s, 0.30 * s, 0, 0, Math.PI * 2)
+  ctx.ellipse(0, 0, r * 0.40, r * 0.82, 0, 0, Math.PI * 2)
   ctx.fill()
+
+  // kernel rows: three short bands, enough to read as an ear and no more.
+  // Any more detail than this smears at the size a cell actually gets.
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = COLORS.maizeDeep
+  ctx.lineWidth = Math.max(1, s * 0.035)
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  for (const t of [-0.34, 0, 0.34]) {
+    ctx.moveTo(-r * 0.26, r * t)
+    ctx.lineTo(r * 0.26, r * t)
+  }
+  ctx.stroke()
+
   ctx.restore()
 }
 
@@ -286,39 +277,64 @@ function drawMaze(ctx, game, cellSize) {
 
   drawSurfaces(ctx, grid, cellSize)
 
-  // start
-  marker(ctx, grid.start.x, grid.start.y, cellSize, COLORS.start)
-  ctx.fillStyle = '#fff'
-  const sx = grid.start.x * cellSize + cellSize * 0.42
-  const sy = grid.start.y * cellSize + cellSize * 0.32
+  /*
+   * Start: dim, and quieter than everything else on the board.
+   *
+   * It used to be the loudest object here — a saturated tile with a white play
+   * glyph on it — which put the most visual weight in the game on the one cell
+   * that stops mattering two seconds in. It is a ring now, and it says only
+   * "you began here".
+   */
+  ctx.strokeStyle = COLORS.start
+  ctx.lineWidth = Math.max(1.5, cellSize * 0.06)
   ctx.beginPath()
-  ctx.moveTo(sx, sy)
-  ctx.lineTo(sx + cellSize * 0.26, sy + cellSize * 0.18)
-  ctx.lineTo(sx, sy + cellSize * 0.36)
-  ctx.closePath()
-  ctx.fill()
+  ctx.arc((grid.start.x + 0.5) * cellSize, (grid.start.y + 0.5) * cellSize,
+    cellSize * 0.26, 0, Math.PI * 2)
+  ctx.stroke()
 
-  // exit — visibly locked until every flag is captured, so the player is never
-  // wondering whether they have missed something
-  marker(ctx, grid.end.x, grid.end.y, cellSize, game.exitOpen ? COLORS.exit : COLORS.exitLocked)
-  ctx.fillStyle = game.exitOpen ? '#fff' : 'rgba(255,255,255,0.75)'
-  ctx.font = `600 ${cellSize * 0.42}px 'Plus Jakarta Sans', sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(game.exitOpen ? '\u{2691}' : '\u{1F512}',
-    (grid.end.x + 0.5) * cellSize, (grid.end.y + 0.55) * cellSize)
+  /*
+   * Exit: the brightest thing on the board once it opens, and breathing.
+   *
+   * It was the *lowest* contrast object in the game — pale grey on cream — which
+   * is a strange thing to do to the only cell that ends the level. Locked, it is
+   * a dull closed ring; open, it is lit and pulses slowly, so it reads from the
+   * edge of the fog as somewhere to go rather than as more scenery.
+   */
+  const ex = (grid.end.x + 0.5) * cellSize
+  const ey = (grid.end.y + 0.5) * cellSize
+  ctx.save()
+  if (game.exitOpen) {
+    const pulse = 0.78 + 0.22 * Math.sin(game.now / 420)
+    ctx.shadowColor = COLORS.exitGlow
+    ctx.shadowBlur = cellSize * 0.7 * pulse
+    ctx.fillStyle = COLORS.exit
+    ctx.globalAlpha = pulse
+    ctx.beginPath()
+    ctx.arc(ex, ey, cellSize * 0.28, 0, Math.PI * 2)
+    ctx.fill()
+  } else {
+    ctx.strokeStyle = COLORS.exitLocked
+    ctx.lineWidth = Math.max(1.5, cellSize * 0.07)
+    ctx.beginPath()
+    ctx.arc(ex, ey, cellSize * 0.26, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(ex - cellSize * 0.13, ey - cellSize * 0.13)
+    ctx.lineTo(ex + cellSize * 0.13, ey + cellSize * 0.13)
+    ctx.stroke()
+  }
+  ctx.restore()
 
-  // maize. A picked one keeps its tile and a tick, so the cell still reads as
-  // somewhere you had to go; an unpicked one is the sprite alone, because a
-  // tile behind an illustration that already fills the cell is only clutter.
+  // maize. A picked one leaves a faint ring, so the cell still reads as
+  // somewhere you had to go without competing with the ones still to get.
   for (const flag of grid.flags) {
     if (game.captured.has(key(flag.x, flag.y))) {
-      marker(ctx, flag.x, flag.y, cellSize, COLORS.flagTaken)
-      ctx.fillStyle = '#b0a892'
-      ctx.font = `600 ${cellSize * 0.4}px 'Plus Jakarta Sans', sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('\u{2713}', (flag.x + 0.5) * cellSize, (flag.y + 0.5) * cellSize)
+      ctx.strokeStyle = COLORS.maizeTaken
+      ctx.lineWidth = Math.max(1, cellSize * 0.05)
+      ctx.beginPath()
+      ctx.arc((flag.x + 0.5) * cellSize, (flag.y + 0.5) * cellSize,
+        cellSize * 0.18, 0, Math.PI * 2)
+      ctx.stroke()
     } else {
       drawMaizeIcon(ctx, flag.x, flag.y, cellSize)
     }
@@ -369,30 +385,68 @@ function drawMaze(ctx, game, cellSize) {
   traceWalls()
 }
 
+/**
+ * The small yellow thing going on ahead of you in the dark.
+ *
+ * Chapter five spends the whole emotional payload of the game on this shape —
+ * "it is my hat, and it is the only part of me that has kept going in a
+ * straight line". For twenty levels before that it was a circle with a white
+ * rim and a specular highlight, which is to say: a token. A reveal only lands
+ * on a shape somebody had already been looking at.
+ *
+ * So it is a hat now, and it is the light source. The brim is an ellipse and
+ * the crown a smaller dome above it, both kept strictly inside `fillRadius` —
+ * `ballDrawMetrics` exists because the physics clamps the centre to exactly one
+ * radius from a wall, so any ink outside that radius reads as the player
+ * clipping through a wall that is in fact colliding exactly.
+ */
 function drawBall(ctx, ball, cellSize) {
   const x = ball.x * cellSize
   const y = ball.y * cellSize
   const { fillRadius, rimRadius, rimWidth } = ballDrawMetrics(ball.radius, cellSize)
 
+  // the glow it carries, which is what makes it findable under fog
   ctx.save()
-  ctx.shadowColor = 'rgba(45,51,74,0.2)'
-  ctx.shadowBlur = cellSize * 0.3
-  ctx.shadowOffsetY = cellSize * 0.06
-  ctx.fillStyle = COLORS.ball
+  ctx.shadowColor = COLORS.hatGlow
+  ctx.shadowBlur = cellSize * 0.55
+  ctx.fillStyle = COLORS.hat
+
+  // brim: as wide as the ink is allowed to be, and no wider
   ctx.beginPath()
-  ctx.arc(x, y, fillRadius, 0, Math.PI * 2)
+  ctx.ellipse(x, y + fillRadius * 0.26, fillRadius, fillRadius * 0.52, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fill()   // twice: canvas shadows do not accumulate within one fill
+
+  // crown, sitting on the brim
+  ctx.beginPath()
+  ctx.ellipse(x, y - fillRadius * 0.18, fillRadius * 0.56, fillRadius * 0.54, 0, Math.PI, 0)
   ctx.fill()
   ctx.restore()
 
-  ctx.strokeStyle = COLORS.ballRim
+  // the band, which is what makes it read as a hat rather than a blob
+  ctx.fillStyle = COLORS.hatBand
+  ctx.beginPath()
+  ctx.ellipse(x, y + fillRadius * 0.12, fillRadius * 0.58, fillRadius * 0.17, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.strokeStyle = COLORS.hatRim
   ctx.lineWidth = rimWidth
   ctx.beginPath()
-  ctx.arc(x, y, rimRadius, 0, Math.PI * 2)
+  ctx.ellipse(x, y + fillRadius * 0.26, rimRadius, rimRadius * 0.52, 0, 0, Math.PI * 2)
   ctx.stroke()
 
-  ctx.fillStyle = COLORS.ballShine
+  /*
+   * A near-white catchlight on the crown.
+   *
+   * Four of the eleven grounds light their walls in amber — field, track,
+   * desert, ember — and on those an amber hat is a warm shape among warm
+   * shapes. This is the one pixel-cluster on the board that is nearly white,
+   * so wherever the player is, the brightest thing on screen is them.
+   */
+  ctx.fillStyle = COLORS.hatHot
   ctx.beginPath()
-  ctx.arc(x - fillRadius * 0.28, y - fillRadius * 0.28, fillRadius * 0.3, 0, Math.PI * 2)
+  ctx.ellipse(x - fillRadius * 0.16, y - fillRadius * 0.30,
+    fillRadius * 0.20, fillRadius * 0.14, -0.4, 0, Math.PI * 2)
   ctx.fill()
 }
 
@@ -594,7 +648,7 @@ function drawTrail(ctx, game, cellSize) {
 
   const radius = game.ball.radius * cellSize
   ctx.save()
-  ctx.fillStyle = COLORS.ball
+  ctx.fillStyle = COLORS.hat
   for (let i = 0; i < trail.length; i++) {
     const age = (i + 1) / trail.length      // 0 oldest, 1 newest
     ctx.globalAlpha = age * 0.34
@@ -636,6 +690,6 @@ function drawScene(ctx, game, cellSize) {
 export {
   COLORS, TERRAINS, SURFACE_TINTS, SURFACE_EDGES, terrainOf, drawSurfaces,
   WALL_WIDTH, MAIZE_SCALE, setupCanvas, ballDrawMetrics,
-  loadMaize, maizeReady, setMaizeImage, drawMaizeIcon,
+  drawMaizeIcon,
   drawScene, drawMaze, drawBall, drawTrail, drawFog, drawHunter, drawWakeWarning,
 }

@@ -131,13 +131,15 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
 
 ### Open decisions — these are the user's, not mine
 
-1. **Art direction.** The board is drawn canvas primitives plus one bought
-   sprite, and that mix is the single thing that reads as unfinished. Commit to
-   clean vector (≈1 week) or commission tiles (≈4 weeks, costs money). **Asked
-   five times, still open.** It blocks the store page and sizes the remaining
-   work. *Everything else now waits on this.*
+*Nothing is currently blocked on a decision.*
 
 **Resolved, 2026-08-29:**
+
+- **Art direction** — **lit from within**. Every ground dark, every wall
+  emitting, a hue per terrain. Not tilesets: most of the board is under fog, so
+  illustrated tiles buy detail the game denies the player. Decided by *looking*
+  — see `npm run shots` — rather than by argument, which is the first time that
+  has been possible in this repo.
 
 - **Length** — cut from 39 to **26**. Levels 20–39 were mechanically identical
   and the distinctness metric could not see it, because it measures topology
@@ -163,6 +165,9 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
   rather than half-built. They need a new grid content type, placement,
   rendering, persistence and text.
 - **No achievements**, no Steam integration, no store page.
+- **The light-theme screens have never been re-checked against the dark board.**
+  The level list, story cards and trail map are still warm paper by design, but
+  only the board has been looked at.
 
 ---
 

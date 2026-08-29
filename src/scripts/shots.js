@@ -22,7 +22,7 @@
  * hunter awake, memory fading behind you — do not exist at t=0.
  */
 
-import { createCanvas, loadImage } from '@napi-rs/canvas'
+import { createCanvas } from '@napi-rs/canvas'
 import { writeFileSync, readFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -43,8 +43,6 @@ globalThis.Image = class {}
 const { fromJSON } = await import(resolve(ROOT, 'src/generate/generate.js'))
 const { createGame, stepGame } = await import(resolve(ROOT, 'src/engine/game.js'))
 const render = await import(resolve(ROOT, 'src/engine/render.js'))
-
-render.setMaizeImage(await loadImage(resolve(ROOT, 'src/assets/maize.png')))
 
 const levels = JSON.parse(readFileSync(resolve(ROOT, 'public/levels.json'), 'utf8'))
 
