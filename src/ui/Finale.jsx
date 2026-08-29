@@ -47,7 +47,7 @@ function Finale({ levels = [], total, onBack, onConcede = null }) {
             : racing
               ? `${run.beaten} of ${run.total} fields beaten. the rest are still slower than they were.`
               : complete
-                ? 'thirty mazes, every ear of maize in them, and the thing in the dark. all of it.'
+                ? `${total} fields, every ear of maize in them, and the thing in the dark. all of it.`
                 : 'you reached the end. some levels back there are still waiting for you.'}
         </p>
 
@@ -86,9 +86,9 @@ function Finale({ levels = [], total, onBack, onConcede = null }) {
           )
           : (
             <p className="card__punchline">
-              so why is it called <em>maizes</em>?
+              the trail is still there.
               <br />
-              <span className="card__punchline-answer">that&rsquo;s the puzzle.</span>
+              <span className="card__punchline-answer">so is she.</span>
             </p>
           )}
 

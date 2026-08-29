@@ -47,6 +47,7 @@ const PROLOGUE = {
     n('I am picking it up.'),
     v('papa'),
     n('That is all I am doing.'),
+    n('The light is going. I put my hat on. It is what I do when I am going to be a while.'),
   ],
   action: 'pick it up',
 }
@@ -60,10 +61,10 @@ const CHAPTER_BEATS = {
   'Warm Up': {
     id: 'ch-warm-up',
     lines: [
-      n('Four rows cleared, and the ground keeps dropping them ahead of me.'),
+      n('Three rows cleared, and the ground keeps dropping them ahead of me.'),
       n('Corn does not walk. I know that much.'),
       v('…she’s still got a whole armful…'),
-      v('…four rows. that’s the lot of it.'),
+      v('…three rows. that’s the lot of it.'),
       n('I did not hear that.'),
     ],
   },
@@ -102,8 +103,12 @@ const CHAPTER_BEATS = {
     ],
   },
 
-  // The hat. Twenty levels of steering a small yellow shape without being told
-  // what it is; this is the only place that debt gets paid.
+  // The hat. Thirteen levels of steering a small yellow shape without being
+  // told what it is; this is the only place that debt gets paid.
+  //
+  // The debt is opened in the prologue — he puts the hat on before the player
+  // has moved anything — because a reveal only lands on someone who was given
+  // the piece to forget. Guarded by a test in ui/story.test.js.
   'Company': {
     id: 'ch-company',
     lines: [
@@ -311,6 +316,27 @@ const CAUGHT_QUIPS = [
   'Bless and keep us. Do not let her see me like this.',
 ]
 
+/*
+ * And what he says once the joke has gone out of him.
+ *
+ * Twelve oaths over a campaign is not twelve oaths per player — a field can
+ * take five or six goes, and charm does not survive its third hearing. So the
+ * oaths are for the first few falls in a field, and after that he stops being
+ * funny about it, which is both the honest amount of writing and the more
+ * truthful thing for a man two days into this to do.
+ */
+const WEARY_QUIPS = [
+  'Up.',
+  'Again. It is only ground.',
+  'I have stopped being funny about it.',
+  'Nothing broken. Up.',
+  'She is still out there. That is the whole of it.',
+  'Get up, old man. Get up.',
+]
+
+/** Falls in one field before the oaths give out. */
+const QUIPS_BEFORE_WEARY = 4
+
 const PICKED_ONE = 'One more of hers. All the way back with it, then.'
 const PICKED_LAST = 'That is the last of them. The way on is open. Good girl.'
 const GHOST_WOKE = 'Something is up and about out there. It knows where I am.'
@@ -319,5 +345,6 @@ export {
   n, v,
   PROLOGUE, CHAPTER_BEATS, BARGAIN, TOO_LATE, SPEEDRUN_BRIEF, ENDING, LOST_HER,
   WHISPERS,
-  DEATH_QUIPS, CAUGHT_QUIPS, PICKED_ONE, PICKED_LAST, GHOST_WOKE,
+  DEATH_QUIPS, WEARY_QUIPS, QUIPS_BEFORE_WEARY,
+  CAUGHT_QUIPS, PICKED_ONE, PICKED_LAST, GHOST_WOKE,
 }

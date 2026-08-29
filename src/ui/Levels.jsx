@@ -13,13 +13,13 @@ import { isDevMode, toggleDevMode } from './devmode.js'
  * The campaign is a mystery, so this shows what has been walked and exactly one
  * step past it. Everything beyond is a blank marker — no name, no chapter, no
  * mechanic tags. Those tags are the spoiler: "fog", "hunted" and "fading" name
- * three of the revelations the story spends thirty levels earning, and a player
+ * three of the revelations the story spends the whole campaign earning, and a player
  * who reads them off a list on day one has been handed the ending. A chapter
  * that has not been reached is not drawn at all, because its name gives it away
  * as surely as the tags do.
  *
  * During the second run it shows something else again: only the fields act two
- * actually races, one per chapter. Offering the other twenty as well would be
+ * actually races, one per chapter. Offering the rest of them as well would be
  * offering levels with no target on them.
  *
  * Developer mode puts all of it back; see devmode.js.
@@ -66,8 +66,8 @@ function Levels({ levels, onPick }) {
   return (
     <div className="levels">
       <header className="levels__head">
-        <h1 className="levels__title">maizes</h1>
-        <p className="levels__tag">why is it called maizes? that&rsquo;s the puzzle.</p>
+        <h1 className="levels__title">Journey to Maizy</h1>
+        <p className="levels__tag">a trail of dropped corn, and a father following it.</p>
         {racing
           ? <p className="levels__progress levels__progress--racing">
               running it back &middot; {run.beaten} of {run.total} fields beaten
@@ -123,7 +123,11 @@ function Levels({ levels, onPick }) {
                           beat {(parFor(level.name) / 1000).toFixed(1)}s
                         </span>
                       )
-                    : best && <span className="card-level__best">best: {best.deaths} deaths</span>}
+                    : best && (
+                        <span className="card-level__best">
+                          {best.deaths === 0 ? 'clean · ' : ''}{walked(best.ms)}
+                        </span>
+                      )}
                 </button>
               )
             })}

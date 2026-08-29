@@ -158,6 +158,18 @@ function App() {
 
     // the queue has drained: go on to whatever it was interrupting
     if (beat.id === ENDING.id || beat.id === LOST_HER.id) { setFinished(true); return }
+
+    /*
+     * The prologue goes straight into the first field.
+     *
+     * It used to end on the level list, which spent the one piece of momentum
+     * the game gets for free: the card says "pick it up", the player presses
+     * the button that says "pick it up", and the game answered with a menu.
+     * There is nothing to choose on that menu — only the first field is
+     * unlocked — so it was a screen asking a question with one answer.
+     */
+    if (beat.id === PROLOGUE.id) { setCurrent(0); return }
+
     if (resumeAt !== null) {
       setCurrent(resumeAt)
       setResumeAt(null)
@@ -179,7 +191,7 @@ function App() {
   }, [])
 
   if (error) return <div className="loading"><p>could not load levels: {error}</p></div>
-  if (!levels) return <div className="loading"><h1 className="levels__title">maizes</h1><p>loading…</p></div>
+  if (!levels) return <div className="loading"><h1 className="levels__title">Journey to Maizy</h1><p>loading…</p></div>
 
   if (queue.length > 0) {
     const beat = queue[0]

@@ -39,7 +39,10 @@ import { createHunter, sleepHunter, stepHunter } from './hunter.js'
  * engine imports them rather than holding them so that changing what the farmer
  * says never means opening the file that decides whether he is alive.
  */
-import { DEATH_QUIPS, CAUGHT_QUIPS, PICKED_ONE, PICKED_LAST, GHOST_WOKE } from '../content.js'
+import {
+  DEATH_QUIPS, WEARY_QUIPS, QUIPS_BEFORE_WEARY,
+  CAUGHT_QUIPS, PICKED_ONE, PICKED_LAST, GHOST_WOKE,
+} from '../content.js'
 
 const STEP_MS = 1000 / 60
 const TRAIL_LENGTH = 14
@@ -77,6 +80,15 @@ function createGame(grid) {
     cell: null,          // the cell the ball was in last step, for footfalls
     quip: '',
 
+    /*
+     * Where in the oath list this field starts.
+     *
+     * Without it every field opens on the same quip, so the first three are
+     * heard twenty-six times and the last nine are never heard at all. Derived
+     * from the board so it is stable for a level and different between levels.
+     */
+    quipOffset: grid.start.x * 31 + grid.start.y * 17 + grid.flags.length * 7,
+
     onDeath: null,
     onCapture: null,
     onStep: null,
@@ -90,6 +102,20 @@ function emit(game, sound) {
   if (game.onSound) game.onSound(sound)
 }
 
+/**
+ * What he says on the way back up.
+ *
+ * An oath for the first few falls in a field, and after that the oaths give
+ * out. A player who is stuck on a field hears the joke three or four times, not
+ * nine, and the going-quiet is the same tiredness the chapters are describing.
+ */
+function quipFor(game) {
+  if (game.deaths <= QUIPS_BEFORE_WEARY) {
+    return DEATH_QUIPS[(game.quipOffset + game.deaths) % DEATH_QUIPS.length]
+  }
+  return WEARY_QUIPS[(game.quipOffset + game.deaths) % WEARY_QUIPS.length]
+}
+
 /** A trap. Costs the walk back and nothing else — picked maize is never lost. */
 function die(game, at) {
   game.deaths += 1
@@ -98,7 +124,7 @@ function die(game, at) {
   // back at the start, so the hunter loses interest and its clock restarts
   sleepHunter(game.hunter, game.now)
   game.flash = { x: at.x, y: at.y, until: game.now + RESPAWN_FLASH_MS, kind: 'trap' }
-  game.quip = DEATH_QUIPS[game.deaths % DEATH_QUIPS.length]
+  game.quip = quipFor(game)
   emit(game, 'death')
   if (game.onDeath) game.onDeath(at, 'trap')
 }
@@ -115,7 +141,7 @@ function lose(game, at) {
   game.lost = true
   game.shake = 420
   game.flash = { x: at.x, y: at.y, until: game.now + RESPAWN_FLASH_MS, kind: 'trap' }
-  game.quip = CAUGHT_QUIPS[(game.deaths + 1) % CAUGHT_QUIPS.length]
+  game.quip = CAUGHT_QUIPS[(game.quipOffset + game.deaths + 1) % CAUGHT_QUIPS.length]
   emit(game, 'caught')
   if (game.onLose) game.onLose(at)
 }

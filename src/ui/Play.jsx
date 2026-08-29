@@ -24,6 +24,16 @@ function clock(ms) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
+/*
+ * Deaths are counted, and not shown while you are playing.
+ *
+ * A running death tally on the board is a shame meter, and it argues with
+ * everything the writing does — the farmer's whole character is that falling in
+ * a hole is an indignity rather than a failure ("Nothing broken. Nothing that
+ * counts."). The number still exists, is still recorded, and is still reported
+ * on the card at the end of the field, where it reads as a story about the walk
+ * instead of a score ticking up next to your hands.
+ */
 function Play({ level, index, total, isLast = false, onBack, onNext }) {
   const canvasRef = useRef(null)
   const boardRef = useRef(null)
@@ -267,10 +277,6 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
         <div className={`hud__tile hud__tile--flags${hud.exitOpen ? ' is-complete' : ''}`}>
           <span className="hud__label">maize</span>
           <span className="hud__value">{hud.captured}<span className="hud__of">/{hud.flagsTotal}</span></span>
-        </div>
-        <div className="hud__tile">
-          <span className="hud__label">deaths</span>
-          <span className="hud__value hud__value--deaths">{hud.deaths}</span>
         </div>
         {par != null && (
           <div className={`hud__tile hud__tile--par${hud.now > par ? ' is-blown' : ''}`}>

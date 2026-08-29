@@ -277,7 +277,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 .hud__of { font-size: 0.9rem; opacity: 0.45; }
-.hud__value--deaths { color: var(--trap); }
 .hud__tile--flags .hud__value { color: var(--flag); }
 /* flags are the only encouraging number on screen; let them say so */
 .hud__tile--flags.is-complete { background: var(--exit-soft); border-color: var(--exit); }

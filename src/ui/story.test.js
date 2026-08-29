@@ -63,6 +63,16 @@ describe('story beats', () => {
     expect(new Set(ids).size, 'duplicate beat id would swallow a beat').toBe(ids.length)
   })
 
+  it('puts the hat in the player\'s hands before it takes it away again', () => {
+    /*
+     * The reveal only lands on someone who was given the piece to forget. If
+     * the prologue never mentions the hat, the yellow shape is just the player
+     * token, and "it is my hat" is news rather than a payoff.
+     */
+    const planted = PROLOGUE.lines.some((l) => /\bhat\b/.test(l.text))
+    expect(planted, 'nothing plants the hat before the reveal pays it off').toBe(true)
+  })
+
   it('reveals the hat only after the player has moved it for a while', () => {
     /*
      * The reveal lands as a payoff or not at all. Expressed as a fraction of

@@ -104,6 +104,18 @@ async function skipStory(view) {
   throw new Error('story cards never ran out')
 }
 
+/**
+ * Back out of a field to the level list.
+ *
+ * The prologue now hands the player straight into the first field rather than
+ * onto a menu, so a test that wants the list has to walk back to it the way a
+ * player would.
+ */
+async function toLevelList(view) {
+  const back = view.container.querySelector('.play__back')
+  if (back) await act(async () => { back.click() })
+}
+
 const level = { ...levelData[0], grid: fromJSON(levelData[0]) }
 const foggy = (() => {
   const d = levelData.find((l) => l.fog !== null)
@@ -115,13 +127,19 @@ const hunted = (() => {
 })()
 
 describe('the app boots', () => {
-  it('reaches the level list', async () => {
+  it('goes from the prologue straight into the first field', async () => {
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => levelData }))
     const view = await mount(<App />)
     // the prologue comes first on a fresh save, and gives almost nothing away
     expect(view.text).toContain('corn on the ground')
     await skipStory(view)
-    expect(view.text).toContain('maizes')
+
+    // no menu in between: "pick it up" picks it up
+    expect(view.text, 'the prologue landed on a menu again').toContain(levelData[0].name)
+    expect(view.container.querySelector('canvas')).not.toBeNull()
+
+    await toLevelList(view)
+    expect(view.text).toContain('Journey to Maizy')
     expect(view.text).toContain('Warm Up')
     expect(errors, errors.join('\n')).toHaveLength(0)
     await view.unmount()
@@ -142,7 +160,10 @@ describe('a level mounts and runs', () => {
     )
     expect(view.text).toContain(level.name)
     expect(view.text).toContain('maize')
-    expect(view.text).toContain('deaths')
+    expect(view.text).toContain('time')
+    // deaths are counted and reported on the card at the end, never ticked up
+    // beside the player's hands while they are still in the field
+    expect(view.text, 'a death tally on the board is a shame meter').not.toContain('deaths')
     expect(view.container.querySelector('canvas')).not.toBeNull()
     expect(errors, errors.join('\n')).toHaveLength(0)
     await view.unmount()
@@ -282,10 +303,10 @@ describe('a level mounts and runs', () => {
 })
 
 describe('the finale', () => {
-  it('renders the ending, and lands the joke', async () => {
+  it('renders the ending, and points back at the trail', async () => {
     const view = await mount(<Finale total={levelData.length} onBack={() => {}} />)
     expect(view.text).toContain('that’s all of them')
-    expect(view.text.toLowerCase()).toContain('that’s the puzzle')
+    expect(view.text.toLowerCase()).toContain('the trail is still there')
     expect(errors, errors.join('\n')).toHaveLength(0)
     await view.unmount()
   })
@@ -295,6 +316,7 @@ describe('the finale', () => {
     global.fetch = vi.fn(async () => ({ ok: true, json: async () => levelData }))
     const view = await mount(<App />)
     await skipStory(view)
+    await toLevelList(view)
 
     const cards = view.container.querySelectorAll('.card-level:not(.card-level--locked)')
     expect(cards).toHaveLength(levelData.length)

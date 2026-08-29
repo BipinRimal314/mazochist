@@ -29,7 +29,7 @@ const beatAfterChapter = (chapter) => CHAPTER_BEATS[chapter] ?? null
  * the story layer: it has to tell apart the last level of a chapter from the
  * last level of the game, and the end of the first run from the end of the
  * second. Testing that through a mounted component would mean actually winning
- * thirty mazes.
+ * every field in the campaign.
  *
  * @param {object[]} levels    the campaign, in order
  * @param {number}   index     the level just finished
