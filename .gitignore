@@ -8,3 +8,6 @@ __pycache__/
 .vercel
 src-tauri/target
 src-tauri/gen
+
+# board renders from `npm run shots` — regenerate rather than commit
+shots/
