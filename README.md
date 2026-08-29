@@ -1,10 +1,9 @@
-# Maizes
+# Journey to Maizy
 
-Thirty mazes. You cannot see most of them. You are a farmer following a trail of
-dropped corn to the daughter who dropped it, something in the later ones is
-looking for you, and towards the end you stop being able to trust your own map.
-
-Why is it called Maizes? That's the puzzle.
+Twenty-six mazes. You cannot see most of them. You are a farmer following a
+trail of dropped corn to the daughter who dropped it, something in the later
+ones is looking for you, and towards the end you stop being able to trust your
+own map.
 
 ```bash
 npm install
@@ -78,7 +77,7 @@ could reach into the rules is a story that could break the proof.
 `beatsAfterLevel` is a pure function, separate from the component, because it is
 the fiddliest part: it has to tell the last level of a chapter from the last
 level of the game, and the end of the first run from the end of the second.
-Testing that through a mounted component would mean actually winning thirty
+Testing that through a mounted component would mean actually winning every
 mazes.
 
 ### The campaign is a mystery
@@ -88,7 +87,7 @@ Everything beyond is a blank marker, and a chapter that has not been reached is
 not drawn at all.
 
 The mechanic tags are the reason. "fog", "hunted" and "fading" name three of the
-revelations the story spends thirty levels earning — a player who reads them off
+revelations the story spends the whole campaign earning — a player who reads them off
 a list on day one has been handed the ending, and the chapter names give away
 nearly as much.
 
@@ -150,7 +149,7 @@ exactly where it is.
 ### The trail map
 
 The premise promised that the player is shown everything they gathered, and the
-bargain screen showed a number. A number is not thirty-nine fields; it is a
+bargain screen showed a number. A number is not twenty-six fields; it is a
 receipt for them.
 
 `TrailMap.jsx` draws the whole journey as one strip: chapters as bands of the
@@ -187,32 +186,52 @@ it is tested too.
 
 ### The speedrun
 
-Finishing the campaign freezes your best time on every level as its **par**, and
-the second run asks you to beat all thirty. The freeze is the whole mechanic:
-read the live bests instead and the target moves every time you improve, so
-beating your own time becomes impossible by construction. `progress.js` snapshots
-`par` when the run starts and never touches it again.
+Finishing the campaign freezes your best times as **par**, and the second run
+asks you to beat them. The freeze is the whole mechanic: read the live bests
+instead and the target moves every time you improve, so beating your own time
+becomes impossible by construction. `progress.js` snapshots `par` when the run
+starts and never touches it again.
+
+Act two races **one field per chapter — the last of each, eleven in all** — and
+not the whole campaign again. Demanding all of it was asking for a second full
+playthrough at the exact moment the player has just been told they were too
+slow, which is the likeliest place in the game to lose them. The set is derived
+from the level list rather than named, so re-cutting the campaign cannot leave
+it pointing at fields that no longer exist.
+
+And the deadline act two turns on is now **shown in act one**. The bandits name
+first light five fields in, it is half-heard the field before that, echoed at
+the ridge, and the level list carries a running total of time walked from the
+first field onward. A game may only judge a number it showed you; "if only you
+were faster" over a campaign that never mentioned speed is a rule invented after
+the exam.
 
 ## The campaign
 
-Thirty-nine levels in eleven chapters. Fog arrives at level 8, the hunter at level 16,
-fading memory at level 25, and none of them ever leaves:
+Twenty-six levels in eleven chapters. Traps arrive at level 4, fog at 6, the
+hunter at 11, sand at 16, snow at 18, fading memory at 20, and none of them ever
+leaves:
 
 | levels | chapter | maize | traps | fog | hunter | memory |
 |---|---|---|---|---|---|---|
-| 1–4 | Warm Up | 1 | — | — | — | ∞ |
-| 5–7 | Two Trips | 2 | 2 | — | — | ∞ |
-| 8–11 | First Light | 2 | 2 | 4.5 | — | ∞ |
-| 12–15 | The Fog | 2 | 3 | 2.9 | — | ∞ |
-| 16–19 | Company | 2 | 3 | 2.9 | slow | ∞ |
-| 20–24 | No Mercy | 3 | 5 | 2.4 | faster | ∞ |
-| 25–27 | The Dry Reach | 3 | 5 | 2.4 | yes | ∞ |
-| 28–30 | The White Mile | 3 | 5 | 2.4 | yes | ∞ |
-| 31–33 | Forgetting | 3 | 5 | 2.4 | yes | 7.0s |
-| 34–36 | The Lit Wood | 3 | 5 | 2.4 | yes | 4.0s |
-| 37–39 | Nothing Stays | 3 | 5 | 2.4 | yes | 2.5s |
+| 1–3 | Warm Up | 1 | — | — | — | ∞ |
+| 4–5 | Two Trips | 2 | 2 | — | — | ∞ |
+| 6–8 | First Light | 2 | 2 | 4.5 | — | ∞ |
+| 9–10 | The Fog | 2 | 3 | 2.9 | — | ∞ |
+| 11–13 | Company | 2 | 3 | 2.9 | yes | ∞ |
+| 14–15 | No Mercy | 3 | 5 | 2.4 | yes | ∞ |
+| 16–17 | The Dry Reach | 3 | 5 | 2.4 | yes | ∞ |
+| 18–19 | The White Mile | 3 | 5 | 2.4 | yes | ∞ |
+| 20–21 | Forgetting | 3 | 5 | 2.4 | yes | 7.0s |
+| 22–23 | The Lit Wood | 3 | 5 | 2.4 | yes | 4.0s |
+| 24–26 | Nothing Stays | 3 | 5 | 2.4 | yes | 2.5s |
 
-Sand arrives at 25, snow at 28, and neither leaves.
+**Why twenty-six and not thirty-nine.** The campaign was thirty-nine, and its
+back half was one board painted six ways: levels 20 to 39 were identical in
+size, ears, traps, fog radius and hunter, with fading memory the only variable
+left to spend across six chapters. Shape distinctness does not rescue that,
+because a player perceives size, threat count and new verbs — not maze topology.
+The cut is to the length that leaves every chapter a variable of its own.
 
 The fog only ever tightens, and only on a chapter that is not introducing
 something else. The chapters that bring the hunter and fading memory inherit the
@@ -234,7 +253,9 @@ That second axis is new, and it exists because of a measurement: the campaign
 before it had thirty-nine levels carrying **eleven** distinct configurations.
 Within a chapter, levels were generated from one tier and different random
 seeds — the walls moved and nothing else did, so twenty-eight of thirty-nine
-re-ran something the player had already been taught.
+re-ran something the player had already been taught. (That fixed the *shape*
+repetition. The *mechanical* repetition in the back half survived it, and is
+what the cut to twenty-six addresses.)
 
 | intent | the question it asks | how it is measured |
 |---|---|---|
@@ -267,8 +288,8 @@ process that made it:
   level where a mechanic arrives the shape of the problem is the shape just
   finished. One new variable at a time, extended to level design.
 
-Result: thirty-nine levels, **thirty-nine distinct configurations**, closest
-in-chapter pair 0.56 apart where it used to be 0.17.
+Result: every level a distinct configuration, with no in-chapter pair inside
+0.55 on the shape vector — where it used to be 0.17.
 
 ## Teaching without telling
 
@@ -480,6 +501,39 @@ and the d-pad can be tested without a controller.
 
 Master volume sits in the pause menu beside the mute toggle, remembered across
 sessions.
+
+## Making it kinder without making it a lie
+
+The pause menu has three dials — **hold the board steady**, **see further**,
+**ghost hangs back** — and reduced motion is taken from the system on first run,
+so a player who has already told their machine what they need does not have to
+find a menu to say it again.
+
+The board jolts, the air is opaque, a drone rises as the thing behind you
+closes, and it never stops. Those are four reasons to put the game down that
+have nothing to do with whether someone wanted to know how it ends.
+
+**The dials cannot reach the proof, and that is the design.** Everything here
+rests on every level having been judged beatable by a simulated player, and the
+one way to lose that guarantee is to let a setting reach the simulation. So:
+
+1. Every dial is monotone in the player's favour. A wider view and a slower
+   hunter cannot turn a solved level unsolvable, and the jolt was never in the
+   simulation at all.
+2. Nothing in the engine reads the stored settings. `createGame(grid, assist)`
+   defaults to `NEUTRAL`, and the solvers call it with **one argument**, as they
+   always have — so a shipped campaign is judged against the game as designed,
+   whatever is in this player's browser.
+
+`engine/assist.test.js` has a block named *assist cannot reach the proof*. If it
+ever fails, a campaign was judged against somebody's accessibility settings.
+That is also why the dials live in `engine/` rather than `ui/`: the renderer and
+the hunter are what read them, and an engine module importing from the React
+shell would be the dependency pointing the wrong way.
+
+Changing a dial takes effect on the next attempt, not the one in progress —
+`game.assist` is read by the hunter when it is built, and quietly slowing
+something already chasing you would be the game changing its own rules mid-run.
 
 ## Playtesting
 

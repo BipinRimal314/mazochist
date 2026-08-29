@@ -3,7 +3,7 @@
 Where *Journey to Maizy* is, what is decided, and what is not. Read this and
 `README.md` and you have the whole picture.
 
-Last updated at commit `4a79778`.
+Last updated after the neurotypical-player pass (see *Phase 6* below).
 
 ---
 
@@ -14,15 +14,16 @@ steer a small yellow shape through mazes you mostly cannot see, gathering maize,
 avoiding invisible traps, and — later — outrunning something. The yellow shape
 turns out to be his hat.
 
-Thirty-nine levels in eleven chapters, plus a speedrun second act. Every level is
-**generated from a seed and proven beatable by a simulated player before it
-ships**; no maze geometry is hand-authored anywhere in the repo.
+Twenty-six levels in eleven chapters, plus a second act that races one field
+from each. Every level is **generated from a seed and proven beatable by a
+simulated player before it ships**; no maze geometry is hand-authored anywhere
+in the repo.
 
 ## Where it is running
 
 | | |
 |---|---|
-| Web | <https://maizes-bipin314.vercel.app> — current, dev mode compiled out |
+| Web | <https://maizes-bipin314.vercel.app> — **stale, predates the cut to 26** |
 | Repo | <https://github.com/BipinRimal314/maizes> |
 | Desktop | builds locally on macOS (4.3 MB, Tauri). Windows and Linux **never built** |
 | Telemetry | written, tested, **switched off** — no Supabase project exists |
@@ -30,7 +31,7 @@ ships**; no maze geometry is hand-authored anywhere in the repo.
 ```bash
 npm run dev              # web, localhost:5173 — add ?dev to unlock everything
 npm run levels           # regenerate the campaign
-npm test                 # 454 tests: engine properties + every level re-judged
+npm test                 # 401 tests: engine properties + every level re-judged
 npm run desktop          # Tauri dev
 npm run desktop:build    # a bundle for the OS you are on
 vercel deploy --prod --yes
@@ -54,6 +55,11 @@ tests, not by discipline.
 4. **Picked maize is never lost to a trap.** Only the hunter can undo progress,
    and that is what makes the countdown worth watching.
 5. **Silence early, instruments late, tutorials never.**
+6. **The game may only judge a number it showed you.** Act two turns on the
+   player having been slow, so the deadline is named in act one and the clock
+   is on the level list from the first field.
+7. **Assist settings never reach the simulation.** `createGame` defaults to
+   `NEUTRAL` and the solvers pass nothing. See `engine/assist.test.js`.
 
 ---
 
@@ -63,6 +69,7 @@ tests, not by discipline.
 src/
   content.js       EVERY WORD THE PLAYER READS. Edit this for text changes.
   engine/          no React in here
+    assist.js      the three help dials, and why they cannot reach the proof
     grid.js        walls as a mirrored bitmask; setWall is the only writer
     physics.js     ball movement in cell units, fixed timestep, surface factors
     hunter.js      the ghost: pathing, waking, the two fairness invariants
@@ -108,6 +115,15 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
   per terrain. Trail behind the hat, screen jolt.
 - **Phase 5 — desktop.** Tauri, 4.3 MB. Save became a real file with a
   synchronous in-memory cache. Gamepad, master volume. CI matrix written.
+- **Phase 6 — the player contract.** A critique from the seat of a mainstream
+  player rather than from inside the design doctrine. The finding was that the
+  game knew what it wanted you to *feel* and never told you what it wanted you
+  to *do*. Seven fixes: the cut to 26; act two down to eleven fields; the
+  deadline planted in act one and a walked-time clock on the level list; the
+  hat planted in the prologue so its reveal is a payoff rather than news;
+  deaths off the board; the oaths thinned out and de-repeated; one name; the
+  prologue leading into the first field instead of onto a menu; and the assist
+  layer.
 
 ---
 
@@ -118,12 +134,20 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
 1. **Art direction.** The board is drawn canvas primitives plus one bought
    sprite, and that mix is the single thing that reads as unfinished. Commit to
    clean vector (≈1 week) or commission tiles (≈4 weeks, costs money). **Asked
-   four times, still open.** It blocks the store page and sizes the remaining
-   work.
-2. **Length.** Currently 39. The user has floated 50–100; I argued for cutting
-   to ~26 that all land. Not resolved.
-3. **The speedrun** is currently *mandatory* to reach the true ending. Strong
-   call, worth making deliberately.
+   five times, still open.** It blocks the store page and sizes the remaining
+   work. *Everything else now waits on this.*
+
+**Resolved, 2026-08-29:**
+
+- **Length** — cut from 39 to **26**. Levels 20–39 were mechanically identical
+  and the distinctness metric could not see it, because it measures topology
+  and a player perceives size, threat count and new verbs.
+- **The speedrun** stays mandatory, but races **eleven fields, not thirty-nine**,
+  and the deadline it judges is now planted in act one.
+- **The name** is **Journey to Maizy**. Storage keys and the Tauri bundle
+  identifier deliberately stay `maizes`/`com.bipinrimal.maizes` so no existing
+  save is orphaned. The repo directory is still `mazochist`; renaming it is a
+  GitHub-side call.
 
 ### Known gaps
 
@@ -144,10 +168,12 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
 
 ## Things that will bite a new session
 
-- **Nothing visual has ever been seen by me.** The Chrome extension has not
-  connected for this project, so every layout, colour and animation is reasoned
-  from code and verified headlessly. The neon, the trail map and the typing
-  cards have never been looked at. Ask the user before assuming they are right.
+- **Nothing visual has ever been seen by me.** The Chrome extension has still
+  not connected for this project — tried again 2026-08-29, "extension is not
+  connected". Every layout, colour and animation is reasoned from code and
+  verified headlessly. The neon, the trail map, the typing cards and now the
+  **assist panel in the pause menu** have never been looked at. Ask the user
+  before assuming they are right.
 - **No audio has ever been heard.** Mix levels are reasoned, not tuned.
 - **`fog` does not affect the solvers.** `playBlind` has its own map and no
   vision model, so tightening fog carries zero generation risk *and* produces no
@@ -170,9 +196,15 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
 
 ## If you are picking this up
 
-The next honest step is **Phase 6: turn the telemetry on and put it in front of
-twenty people.** Every difficulty call in this repo is currently my simulation
-and one person's playthrough. `level_quit` will tell you more in a weekend than
-another phase of building will.
+The next honest step is **turning the telemetry on and putting it in front of
+twenty people.** Every difficulty call in this repo is still one simulation and
+one person's playthrough, and the phase just finished changed the shape of the
+game on reasoning alone — the cut to 26 and the eleven-field act two are the
+two calls most worth checking against real `level_quit` data.
+
+Two things to look at first when someone does play it:
+
+- the **assist panel** has never been seen rendered, only tested
+- the deployed web build is **stale** — it is still the 39-level campaign
 
 Everything else waits on the art decision.
