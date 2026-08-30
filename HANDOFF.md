@@ -115,6 +115,9 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
   per terrain. Trail behind the hat, screen jolt.
 - **Phase 5 — desktop.** Tauri, 4.3 MB. Save became a real file with a
   synchronous in-memory cache. Gamepad, master volume. CI matrix written.
+- **Phase 7 — the lantern.** Walls occlude the light. Shadows cut sight and
+  never memory; what he sees is warm, what he remembers is cold. Safe because
+  `fog` reaches no solver. 2.96 ms/frame on the biggest board, so canvas stays.
 - **Phase 6 — the player contract.** A critique from the seat of a mainstream
   player rather than from inside the design doctrine. The finding was that the
   game knew what it wanted you to *feel* and never told you what it wanted you

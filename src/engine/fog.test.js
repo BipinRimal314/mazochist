@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { createGrid, setWall, DIRECTIONS, key } from './grid.js'
 import { createGame, stepGame, restartGame } from './game.js'
-import { drawFog } from './render.js'
+import { drawFog, LANTERN_REACH } from './render.js'
 
 /**
- * Fading memory.
+ * The fog compositor: what he can see, and what he can only remember.
  *
- * It is the one mechanic that is purely presentational — it changes what the
- * canvas paints, not what the simulation permits — so what is worth testing is
- * that the record it draws from decays, and that the drawing honours it.
+ * Both halves are purely presentational — they change what the canvas paints,
+ * not what the simulation permits. `fog` appears nowhere in `solvers.js` or
+ * `oracle.js`, which is the licence the lantern was built under: no amount of
+ * shadow can make a level that was proven beatable unbeatable.
+ *
+ * So what is worth testing is that the record memory draws from decays, that
+ * the drawing honours it, and that the lantern actually casts.
  */
 
 function openGrid(cols, rows) {
@@ -37,10 +41,18 @@ beforeAll(() => {
   }
 })
 
-/** A canvas stub that records the alphas the fog compositor punches with. */
+/**
+ * A canvas stub that records the alphas the fog compositor punches with.
+ *
+ * Both offscreens — the fog sheet and the lantern's sight mask — are handed
+ * this same stub, so it has to answer the path calls the shadow caster makes as
+ * well as the rectangle fills memory makes. `shadows` counts the quads cast.
+ */
 function recordingContext() {
   const fills = []
+  const shadows = []
   let current = null
+  let pending = 0
   const ctx = {
     canvas: null,
     globalCompositeOperation: 'source-over',
@@ -50,10 +62,14 @@ function recordingContext() {
     fillRect(x, y, w, h) { fills.push({ x, y, w, h, style: current }) },
     createRadialGradient: () => ({ addColorStop() {} }),
     createLinearGradient: () => ({ addColorStop() {} }),
-    beginPath() {}, arc() {}, fill() {}, save() {}, restore() {}, drawImage() {},
+    beginPath() { pending = 0 },
+    moveTo() { pending += 1 },
+    lineTo() {}, closePath() {}, arc() {},
+    fill() { if (pending > 0) shadows.push(pending); pending = 0 },
+    stroke() {}, save() {}, restore() {}, drawImage() {},
   }
   activeCtx = ctx
-  return { ctx, fills }
+  return { ctx, fills, shadows }
 }
 
 describe('the visited record', () => {
@@ -203,5 +219,61 @@ describe('memory never changes what is possible', () => {
     }
 
     expect(run(2500)).toEqual(run(null))
+  })
+})
+
+describe('the lantern', () => {
+  /**
+   * A wall between the light and a cell should take that cell away.
+   *
+   * The stub cannot rasterise, so what is checked is that the caster runs and
+   * emits one four-point quad per wall it finds — the geometry itself is
+   * verified by looking, via `npm run shots`.
+   */
+  function walledGrid() {
+    const grid = openGrid(9, 9)
+    // put a wall back in the middle of the open floor
+    setWall(grid, 4, 4, DIRECTIONS[1], true)
+    return grid
+  }
+
+  it('casts a shadow from every wall inside its reach', () => {
+    const game = createGame(walledGrid())
+    const { ctx, shadows } = recordingContext()
+    drawFog(ctx, game, 20)
+
+    expect(shadows.length, 'nothing was cast — the lantern is a plain disc again')
+      .toBeGreaterThan(0)
+    for (const corners of shadows) {
+      expect(corners, 'a shadow quad has four corners').toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  it('casts nothing on a level with no fog, because there is nothing to cut', () => {
+    const grid = walledGrid()
+    grid.fog = null
+    const game = createGame(grid)
+    const { ctx, shadows, fills } = recordingContext()
+    drawFog(ctx, game, 20)
+    expect(shadows).toHaveLength(0)
+    expect(fills, 'an unfogged level should not paint a fog sheet at all').toHaveLength(0)
+  })
+
+  it('reaches further than the raw radius, because walls now do the limiting', () => {
+    // grid.fog was tuned for light that ignored walls; occlusion took that job
+    const game = createGame(walledGrid())
+    const { ctx } = recordingContext()
+    expect(() => drawFog(ctx, game, 20)).not.toThrow()
+    expect(LANTERN_REACH, 'the lantern must throw further than the old disc')
+      .toBeGreaterThan(1)
+  })
+
+  it('lets the assist widen it without touching anything the rules read', () => {
+    const game = createGame(walledGrid())
+    const before = { deaths: game.deaths, now: game.now, won: game.won }
+    game.assist = { ...game.assist, fogBonus: 3 }
+    const { ctx } = recordingContext()
+    drawFog(ctx, game, 20)
+    expect({ deaths: game.deaths, now: game.now, won: game.won }).toEqual(before)
   })
 })

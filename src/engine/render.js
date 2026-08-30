@@ -166,7 +166,20 @@ const MARKER_INSET = 0.14
  * to be obviously lighter than an unwalked one, and obviously darker than the
  * circle you are standing in.
  */
-const MEMORY_ALPHA = 0.45
+/**
+ * How much fog is left over ground you have already walked.
+ *
+ * Thinner than it was, and it had to go this way rather than the other. Once
+ * walls started casting shadows, sight collapsed to the room you are standing
+ * in plus whatever corridors happen to line up — so the trail behind you
+ * stopped being flavour and became the map. A veil that read as "dimly
+ * remembered" over a cream board reads as nothing at all over near-black.
+ *
+ * What separates seeing from remembering is no longer brightness, which is why
+ * this can afford to be thin: what he can see is *warm*, because he is carrying
+ * the light. What he remembers is the same ground gone cold.
+ */
+const MEMORY_ALPHA = 0.35
 
 /** Ink geometry for the ball. `outerEdge` must never exceed the collision radius. */
 function ballDrawMetrics(radius, cellSize) {
@@ -544,19 +557,128 @@ function drawWakeWarning(ctx, game, cellSize) {
 }
 
 let fogCanvas = null
+let sightCanvas = null
+
+function scratchCanvas(existing, width, height) {
+  const canvas = existing ?? (typeof OffscreenCanvas !== 'undefined'
+    ? new OffscreenCanvas(width, height)
+    : document.createElement('canvas'))
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width
+    canvas.height = height
+  }
+  return canvas
+}
 
 function getFogCanvas(width, height) {
-  if (!fogCanvas) {
-    fogCanvas = typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(width, height)
-      : document.createElement('canvas')
-  }
-  if (fogCanvas.width !== width || fogCanvas.height !== height) {
-    fogCanvas.width = width
-    fogCanvas.height = height
-  }
+  fogCanvas = scratchCanvas(fogCanvas, width, height)
   return fogCanvas
 }
+
+function getSightCanvas(width, height) {
+  sightCanvas = scratchCanvas(sightCanvas, width, height)
+  return sightCanvas
+}
+
+/**
+ * The shape the lantern actually reaches: a disc of light with the shadow of
+ * every wall between it and the player cut back out of it.
+ *
+ * Returned as a mask — opaque where the player can see, clear where they
+ * cannot — so the caller can punch it out of the fog in one composite.
+ *
+ * Only the walls inside the light are considered. A shadow is cast by
+ * projecting each wall segment's two ends directly away from the light and far
+ * enough off the board that the quad between them covers everything behind it;
+ * `SHADOW_THROW` is in cells and only has to exceed the diagonal of the largest
+ * board, which is 18x11.
+ *
+ * This is presentation and nothing else. `fog` appears nowhere in `solvers.js`
+ * or `oracle.js` — the simulated players have their own map and no vision model
+ * at all — so tightening or loosening what the player can see cannot make a
+ * shipped level unbeatable. That is the only reason this was safe to build.
+ */
+const SHADOW_THROW = 40
+
+/**
+ * How much further the lantern throws than the old disc did.
+ *
+ * `grid.fog` was tuned for light that ignored walls: a radius of 2.4 cells
+ * meant 2.4 cells of sight in every direction, corridor or not. Once walls
+ * occlude, that same number leaves the player lighting one room and nothing
+ * else, because in a maze almost every direction is a wall.
+ *
+ * So occlusion takes over the job of limiting sight and the raw reach grows to
+ * suit. What the player loses is seeing *through* walls; what they gain is
+ * seeing *along* a corridor. Same numbers in `levels.json`, different meaning —
+ * and no risk either way, because no solver has ever consulted them.
+ */
+const LANTERN_REACH = 2.2
+
+function buildSight(width, height, grid, lightX, lightY, radius) {
+  const canvas = getSightCanvas(width, height)
+  const sctx = canvas.getContext('2d')
+
+  sctx.globalCompositeOperation = 'source-over'
+  sctx.clearRect(0, 0, width, height)
+
+  const gradient = sctx.createRadialGradient(lightX, lightY, 0, lightX, lightY, radius)
+  gradient.addColorStop(0, 'rgba(0,0,0,1)')
+  gradient.addColorStop(0.62, 'rgba(0,0,0,1)')
+  gradient.addColorStop(1, 'rgba(0,0,0,0)')
+  sctx.fillStyle = gradient
+  sctx.beginPath()
+  sctx.arc(lightX, lightY, radius, 0, Math.PI * 2)
+  sctx.fill()
+
+  // cull to the cells the light could possibly touch
+  const cell = width / grid.cols
+  const reach = radius / cell + 1
+  const cx = lightX / cell
+  const cy = lightY / cell
+  const minX = Math.max(0, Math.floor(cx - reach))
+  const maxX = Math.min(grid.cols - 1, Math.ceil(cx + reach))
+  const minY = Math.max(0, Math.floor(cy - reach))
+  const maxY = Math.min(grid.rows - 1, Math.ceil(cy + reach))
+
+  sctx.globalCompositeOperation = 'destination-out'
+  sctx.fillStyle = '#000'
+  sctx.beginPath()
+
+  const throwFar = SHADOW_THROW * cell
+  const castFrom = (ax, ay, bx, by) => {
+    const adx = ax - lightX
+    const ady = ay - lightY
+    const bdx = bx - lightX
+    const bdy = by - lightY
+    const alen = Math.hypot(adx, ady) || 1e-6
+    const blen = Math.hypot(bdx, bdy) || 1e-6
+    sctx.moveTo(ax, ay)
+    sctx.lineTo(ax + (adx / alen) * throwFar, ay + (ady / alen) * throwFar)
+    sctx.lineTo(bx + (bdx / blen) * throwFar, by + (bdy / blen) * throwFar)
+    sctx.lineTo(bx, by)
+    sctx.closePath()
+  }
+
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const w = wallsAt(grid, x, y)
+      const px = x * cell
+      const py = y * cell
+      // TOP and LEFT only, plus the two outer edges: every interior wall is
+      // shared, and casting it twice is wasted work rather than a darker shadow
+      if (w & TOP) castFrom(px, py, px + cell, py)
+      if (w & LEFT) castFrom(px, py, px, py + cell)
+      if (x === grid.cols - 1 && (w & RIGHT)) castFrom(px + cell, py, px + cell, py + cell)
+      if (y === grid.rows - 1 && (w & BOTTOM)) castFrom(px, py + cell, px + cell, py + cell)
+    }
+  }
+
+  sctx.fill()
+  sctx.globalCompositeOperation = 'source-over'
+  return canvas
+}
+
 
 /**
  * Fog as a composited mask: a dark sheet, holes punched where the player has
@@ -601,21 +723,54 @@ function drawFog(ctx, game, cellSize) {
     fctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize)
   }
 
+  /*
+   * Now what he can see from where he is standing.
+   *
+   * Built in its own pass and then punched out in one composite, rather than
+   * drawn straight into the fog, and the order is the whole point: shadows have
+   * to cut into *sight* without touching *memory*. A corridor you have already
+   * walked stays remembered when a wall later comes between you and it —
+   * because you did see it, and the game's whole subject is the difference
+   * between what a man can see and what he can still remember.
+   */
   const bx = ball.x * cellSize
   const by = ball.y * cellSize
   // assist widens the hole and nothing else; the fog was never in the proof
-  const radius = (grid.fog + game.assist.fogBonus) * cellSize
-  const gradient = fctx.createRadialGradient(bx, by, 0, bx, by, radius)
-  gradient.addColorStop(0, 'rgba(0,0,0,1)')
-  gradient.addColorStop(0.62, 'rgba(0,0,0,1)')
-  gradient.addColorStop(1, 'rgba(0,0,0,0)')
-  fctx.fillStyle = gradient
-  fctx.beginPath()
-  fctx.arc(bx, by, radius, 0, Math.PI * 2)
-  fctx.fill()
+  const radius = (grid.fog + game.assist.fogBonus) * LANTERN_REACH * cellSize
+  const sight = buildSight(width, height, grid, bx, by, radius)
+  fctx.globalCompositeOperation = 'destination-out'
+  fctx.drawImage(sight, 0, 0)
   fctx.globalCompositeOperation = 'source-over'
 
   ctx.drawImage(canvas, 0, 0)
+
+  /*
+   * And then the warmth.
+   *
+   * Punching a hole in the fog says "there is no fog here". It does not say
+   * "someone is holding a light", which is the entire fiction — so the same
+   * shape is re-used as a mask for a warm additive wash, strongest at his feet
+   * and gone by the edge of his reach.
+   *
+   * Warm on every terrain, including the cold ones, and especially the cold
+   * ones: a yellow light on ice-blue walls is the whole of the White Mile in
+   * one frame. It is drawn on the main context after the fog rather than into
+   * it, because fog is something taken away and this is something added.
+   */
+  const sctx = sight.getContext('2d')
+  sctx.globalCompositeOperation = 'source-in'
+  const warmth = sctx.createRadialGradient(bx, by, 0, bx, by, radius)
+  warmth.addColorStop(0, 'rgba(255, 206, 122, 0.30)')
+  warmth.addColorStop(0.45, 'rgba(255, 186, 96, 0.16)')
+  warmth.addColorStop(1, 'rgba(255, 170, 80, 0)')
+  sctx.fillStyle = warmth
+  sctx.fillRect(0, 0, width, height)
+  sctx.globalCompositeOperation = 'source-over'
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.drawImage(sight, 0, 0)
+  ctx.restore()
 }
 
 function drawFlash(ctx, game, cellSize) {
@@ -689,7 +844,7 @@ function drawScene(ctx, game, cellSize) {
 
 export {
   COLORS, TERRAINS, SURFACE_TINTS, SURFACE_EDGES, terrainOf, drawSurfaces,
-  WALL_WIDTH, MAIZE_SCALE, setupCanvas, ballDrawMetrics,
+  WALL_WIDTH, MAIZE_SCALE, LANTERN_REACH, setupCanvas, ballDrawMetrics,
   drawMaizeIcon,
   drawScene, drawMaze, drawBall, drawTrail, drawFog, drawHunter, drawWakeWarning,
 }

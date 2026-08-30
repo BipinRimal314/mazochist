@@ -573,6 +573,59 @@ theme already sets, so no element on that screen needed a second rule.
 The split is not only pragmatic. The cards are his voice, remembered and written
 down. The field is the dark he is actually walking through.
 
+## The hat is a lantern
+
+Fog used to be a radial gradient: a soft disc centred on the player that did not
+care where the walls were, so you saw *through* them. Now the walls occlude it.
+You see down a corridor and not through its wall; a dead end goes black as you
+pass it; turning a corner is a reveal rather than a redraw.
+
+Built as a second offscreen — a disc of light with a shadow quad cut out of it
+for every wall segment inside the reach — then punched out of the fog sheet in
+one composite. Only cells within the light are considered, and only the TOP and
+LEFT of each is cast, because every interior wall is shared and casting it twice
+is wasted work rather than a darker shadow.
+
+**Order is the whole point: shadows cut into *sight*, never into *memory*.** A
+corridor you have already walked stays remembered when a wall later comes
+between you and it, because you did see it — and the difference between what a
+man can see and what he can still remember is the game's actual subject. So the
+two are separate passes and only one of them is occluded.
+
+What separates them on screen is no longer brightness but temperature. What he
+can see is **warm**, because he is carrying the light: the same sight mask is
+re-used for an additive wash, strongest at his feet and gone by the edge of his
+reach. What he remembers is that ground gone cold. That is why `MEMORY_ALPHA`
+could be thinned rather than thickened.
+
+### Why this was safe to build
+
+`fog` appears nowhere in `solvers.js` or `oracle.js`. The simulated players have
+their own map and no vision model at all, so tightening or loosening what a
+human can see **cannot make a shipped level unbeatable**. It is the one large
+visual change in the game that carries zero risk to the proof, which is why it
+was the one to make first.
+
+### Two numbers moved, and why
+
+- **`LANTERN_REACH = 2.2`.** `grid.fog` was tuned for light that ignored walls:
+  2.4 meant 2.4 cells of sight in every direction, corridor or not. Once walls
+  occlude, that same number lights one room and nothing else, because in a maze
+  almost every direction is a wall. Occlusion took over the job of limiting
+  sight, so the raw reach grew to suit. Same numbers in `levels.json`, different
+  meaning.
+- **`MEMORY_ALPHA` 0.45 → 0.35.** Sight collapsed to the room you are in plus
+  whatever corridors line up, so the trail behind you stopped being flavour and
+  became the map. This had to go thinner, not thicker — a test caught it going
+  the wrong way.
+
+### Cost
+
+2.96 ms/frame on the largest board the game ships (18×11 at 48 px), measured
+through a *software* canvas; browsers are hardware-accelerated. The frame budget
+is 16.7 ms. Canvas 2D holds this comfortably, which is why there is still no
+WebGL renderer in this repo.
+
 ## Making it kinder without making it a lie
 
 The pause menu has three dials — **hold the board steady**, **see further**,
