@@ -122,7 +122,8 @@ function judge(grid, { full = true } = {}) {
   if (perfect.deaths > 0) {
     return { ok: false, problems: [`a perfect player still died ${perfect.deaths} times`], difficulty: null }
   }
-  if (perfect.seconds > RULES.MAX_PERFECT_SECONDS) {
+  // the big late tiers carry their own, larger allowance — see TIERS
+  if (perfect.seconds > (grid.patience ?? RULES.MAX_PERFECT_SECONDS)) {
     return {
       ok: false,
       problems: [`even played perfectly this takes ${perfect.seconds.toFixed(0)}s`],

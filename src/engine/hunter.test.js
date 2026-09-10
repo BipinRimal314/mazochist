@@ -267,6 +267,30 @@ describe('catching', () => {
     expect(game.hunter.active).toBe(false)
   })
 
+  it('makes a trap cost the field once something is hunting in it', () => {
+    /*
+     * The stakes step up on the level the ghost arrives. Before it, a fall
+     * costs the walk back; with it, every picked ear goes back where it lay,
+     * exactly as if the ghost had caught you — but without ending the attempt.
+     */
+    const grid = openGrid(9, 9)
+    grid.flags = [{ x: 2, y: 0 }, { x: 8, y: 8 }]
+    grid.traps = [{ x: 5, y: 0 }]
+    grid.hunter = { spawnMs: 60000, speed: 0.05 }
+    const game = createGame(grid)
+
+    game.input.right = true
+    for (let i = 0; i < 400 && game.captured.size === 0; i++) stepGame(game)
+    expect(game.captured.size, 'should have picked one on the way').toBe(1)
+
+    for (let i = 0; i < 800 && game.deaths === 0; i++) stepGame(game)
+    expect(game.deaths).toBe(1)
+    expect(game.lost, 'a trap still does not end the attempt').toBe(false)
+    expect(game.captured.size, 'on a hunted field a fall costs the maize').toBe(0)
+    expect(game.exitOpen).toBe(false)
+    expect(game.fx.some((f) => f.kind === 'unpick'), 'the ear going back is shown').toBe(true)
+  })
+
   it('leaves a trap death costing nothing but the walk back', () => {
     const grid = openGrid(9, 9)
     grid.flags = [{ x: 2, y: 0 }, { x: 8, y: 8 }]

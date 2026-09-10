@@ -202,7 +202,7 @@ describe('every level asks its own question', () => {
   it('never ships a level that is a slog even played perfectly', () => {
     for (const level of levels) {
       expect(level.difficulty.perfectSeconds, level.name)
-        .toBeLessThanOrEqual(RULES.MAX_PERFECT_SECONDS)
+        .toBeLessThanOrEqual(level.p ?? RULES.MAX_PERFECT_SECONDS)
     }
   })
 })

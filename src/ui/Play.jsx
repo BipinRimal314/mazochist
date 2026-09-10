@@ -12,6 +12,16 @@ import { useCellSize } from './useCellSize.js'
 import { useGameInput } from './useGameInput.js'
 import { useGamepad } from './useGamepad.js'
 import { useGameLoop } from './useGameLoop.js'
+import { OUTRO_MS } from '../engine/render.js'
+
+/**
+ * How long the field's name sits over the board before the clock starts.
+ *
+ * The game is paused underneath it, so the time on the card is time spent
+ * walking and not time spent reading. Any move ends it early: a player who
+ * knows the field does not wait for the title.
+ */
+const INTRO_MS = 1300
 
 /* eslint-disable react-hooks/refs --
  * The game is an imperative engine instance, not render data. It is created
@@ -68,8 +78,12 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
         ms: game.now,
         restarts: restartsRef.current,
       })
-      setResult({ deaths: game.deaths, ms: game.now, par: parRef.current.ms })
+      // the card waits for the hat to go in; the numbers on it are already fixed
+      const outcome = { deaths: game.deaths, ms: game.now, par: parRef.current.ms }
+      setTimeout(() => setResult(outcome), OUTRO_MS + 120)
     }
+    // the field opens under its title, and the clock with it
+    game.paused = true
     /*
      * Caught. Set from the callback rather than read off the HUD snapshot: the
      * snapshot lands ten times a second, and a beat this abrupt should stop the
@@ -90,8 +104,8 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
   }
   const game = gameRef.current
 
-  const cellSize = useCellSize(level.grid.cols, level.grid.rows)
-  const hud = useGameLoop(game, canvasRef, cellSize)
+  const view = useCellSize(level.grid.cols, level.grid.rows)
+  const hud = useGameLoop(game, canvasRef, view)
 
   const [muted, setMuted] = useState(isMuted)
 
@@ -122,13 +136,48 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
    * press that asked for it.
    */
   const [paused, setPaused] = useState(false)
+  const pausedRef = useRef(false)
 
   const pause = useCallback((next) => {
     if (game.won) return
     game.paused = next
+    pausedRef.current = next
     if (next) game.input.up = game.input.down = game.input.left = game.input.right = false
     setPaused(next)
   }, [game])
+
+  /*
+   * The title over the field.
+   *
+   * `game.paused` was set true when the game was built, so nothing moves and
+   * the clock does not run until this lifts it. It lifts on the timer or on
+   * the first thing the player does, whichever is first — and only if the menu
+   * has not been opened in the meantime, so a player who pressed P during the
+   * title is not quietly un-paused by it.
+   */
+  const [intro, setIntro] = useState(true)
+  const introRef = useRef(true)
+  const endIntro = useCallback(() => {
+    if (!introRef.current) return
+    introRef.current = false
+    setIntro(false)
+    if (!pausedRef.current && !game.won && !game.lost) game.paused = false
+  }, [game])
+
+  useEffect(() => {
+    const timer = setTimeout(endIntro, INTRO_MS)
+    const onAnyInput = (e) => {
+      if (e.type === 'keydown' && (e.metaKey || e.ctrlKey || e.altKey)) return
+      endIntro()
+    }
+    window.addEventListener('keydown', onAnyInput)
+    window.addEventListener('pointerdown', onAnyInput)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('keydown', onAnyInput)
+      window.removeEventListener('pointerdown', onAnyInput)
+    }
+  }, [endIntro])
 
   const restart = useCallback(() => {
     if (game.won) return
@@ -138,7 +187,9 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
     pause(false)
   }, [game, pause])
 
-  const togglePause = useCallback(() => { pause(!game.paused) }, [game, pause])
+  // toggled from the menu's own state, not `game.paused`: the intro holds the
+  // game paused too, and a menu that reads that would close instead of open
+  const togglePause = useCallback(() => { pause(!pausedRef.current) }, [pause])
 
   const onToggleSound = useCallback(() => { setMuted(toggleMuted()) }, [])
 
@@ -289,7 +340,10 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
         </div>
         <div className={`hud__tile hud__tile--flags${hud.exitOpen ? ' is-complete' : ''}`}>
           <span className="hud__label">maize</span>
-          <span className="hud__value">{hud.captured}<span className="hud__of">/{hud.flagsTotal}</span></span>
+          {/* keyed on the count so the number pops each time it changes */}
+          <span className="hud__value" key={hud.captured}>
+            <span className="hud__pop">{hud.captured}</span><span className="hud__of">/{hud.flagsTotal}</span>
+          </span>
         </div>
         {par != null && (
           <div className={`hud__tile hud__tile--par${hud.now > par ? ' is-blown' : ''}`}>
@@ -307,6 +361,12 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
 
       <div className="board" ref={boardRef}>
         <canvas ref={canvasRef} className="board__canvas" />
+        {intro && (
+          <div className="board__intro" aria-hidden="true">
+            <span className="board__intro-chapter">{level.chapter}</span>
+            <span className="board__intro-name">{level.name}</span>
+          </div>
+        )}
         {lost && (
           <div className="board__overlay board__overlay--lost">
             <span className="menu__title">Caught.</span>
@@ -380,7 +440,11 @@ function Play({ level, index, total, isLast = false, onBack, onNext }) {
         )}
       </div>
 
-      <p className={`play__quip${whisper && !hud.quip ? ' play__quip--whisper' : ''}`}>
+      {/* keyed on the line so each new one fades up rather than swapping in */}
+      <p
+        key={hud.quip || whisper || ''}
+        className={`play__quip${whisper && !hud.quip ? ' play__quip--whisper' : ''}`}
+      >
         {hud.quip || whisper || ''}
       </p>
 

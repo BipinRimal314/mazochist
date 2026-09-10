@@ -15,6 +15,13 @@
 
 import { TOP, RIGHT, BOTTOM, LEFT, wallsAt, key, SAND, SNOW } from './grid.js'
 import { wakeProgress } from './hunter.js'
+import { fxProgress, latestFx } from './fx.js'
+
+// easing, for the handful of things that move on their own
+const easeOut = (t) => 1 - (1 - t) ** 3
+const easeIn = (t) => t ** 3
+const easeOutBack = (t) => 1 + 2.4 * (t - 1) ** 3 + 1.4 * (t - 1) ** 2
+const clamp01 = (t) => Math.max(0, Math.min(1, t))
 
 const COLORS = {
   start: '#2f6f74',
@@ -62,24 +69,24 @@ const COLORS = {
  * per chapter would re-teach the vocabulary every time the scenery changed.
  */
 const TERRAINS = {
-  field:  { bg: '#14100a', grid: '#221b10', wall: '#f0b357', glow: 'rgba(240, 179, 87, 0.70)', fog: '10, 8, 5' },
-  track:  { bg: '#17110a', grid: '#251c11', wall: '#e0a049', glow: 'rgba(224, 160, 73, 0.65)', fog: '12, 9, 5' },
-  dusk:   { bg: '#100e1a', grid: '#1c1930', wall: '#b9a8e8', glow: 'rgba(185, 168, 232, 0.70)', fog: '8, 7, 14' },
-  woods:  { bg: '#0b120d', grid: '#152018', wall: '#a8cf9a', glow: 'rgba(168, 207, 154, 0.65)', fog: '5, 9, 6' },
-  night:  { bg: '#0a0e1a', grid: '#141a2c', wall: '#a8c4e8', glow: 'rgba(168, 196, 232, 0.70)', fog: '5, 7, 13' },
-  ridge:  { bg: '#121316', grid: '#1e2026', wall: '#e6e2d6', glow: 'rgba(230, 226, 214, 0.60)', fog: '9, 10, 12' },
-  marsh:  { bg: '#0a1010', grid: '#14201c', wall: '#8fbf8a', glow: 'rgba(143, 191, 138, 0.60)', fog: '5, 8, 8' },
-  ember:  { bg: '#170a08', grid: '#26120d', wall: '#ff8a4c', glow: 'rgba(255, 138, 76, 0.75)', fog: '11, 5, 4' },
+  field:  { bg: '#14100a', grid: '#221b10', wall: '#f0b357', glow: 'rgba(240, 179, 87, 0.39)', fog: '10, 8, 5' },
+  track:  { bg: '#17110a', grid: '#251c11', wall: '#e0a049', glow: 'rgba(224, 160, 73, 0.36)', fog: '12, 9, 5' },
+  dusk:   { bg: '#100e1a', grid: '#1c1930', wall: '#b9a8e8', glow: 'rgba(185, 168, 232, 0.39)', fog: '8, 7, 14' },
+  woods:  { bg: '#0b120d', grid: '#152018', wall: '#a8cf9a', glow: 'rgba(168, 207, 154, 0.36)', fog: '5, 9, 6' },
+  night:  { bg: '#0a0e1a', grid: '#141a2c', wall: '#a8c4e8', glow: 'rgba(168, 196, 232, 0.39)', fog: '5, 7, 13' },
+  ridge:  { bg: '#121316', grid: '#1e2026', wall: '#e6e2d6', glow: 'rgba(230, 226, 214, 0.33)', fog: '9, 10, 12' },
+  marsh:  { bg: '#0a1010', grid: '#14201c', wall: '#8fbf8a', glow: 'rgba(143, 191, 138, 0.33)', fog: '5, 8, 8' },
+  ember:  { bg: '#170a08', grid: '#26120d', wall: '#ff8a4c', glow: 'rgba(255, 138, 76, 0.41)', fog: '11, 5, 4' },
 
-  desert: { bg: '#1a1008', grid: '#2a1c0e', wall: '#f5c169', glow: 'rgba(245, 193, 105, 0.70)', fog: '13, 8, 4' },
-  snow:   { bg: '#0a1220', grid: '#142034', wall: '#dcecff', glow: 'rgba(220, 236, 255, 0.70)', fog: '5, 9, 16' },
+  desert: { bg: '#1a1008', grid: '#2a1c0e', wall: '#f5c169', glow: 'rgba(245, 193, 105, 0.39)', fog: '13, 8, 4' },
+  snow:   { bg: '#0a1220', grid: '#142034', wall: '#dcecff', glow: 'rgba(220, 236, 255, 0.39)', fog: '5, 9, 16' },
 
   // where it started: the coldest light in the game, and the only green one
   enchanted: {
     bg: '#0d0b1a',
     grid: '#1b1733',
     wall: '#7df9e2',
-    glow: 'rgba(80, 240, 205, 0.85)',
+    glow: 'rgba(80, 240, 205, 0.47)',
     fog: '6, 5, 14',
   },
 }
@@ -153,7 +160,7 @@ function drawSurfaces(ctx, grid, cellSize) {
   }
 }
 
-const WALL_WIDTH = 0.07
+const WALL_WIDTH = 0.06
 const MARKER_INSET = 0.14
 /**
  * How much fog is left over a cell you have already walked.
@@ -231,10 +238,18 @@ function roundRect(ctx, x, y, w, h, r) {
  */
 const MAIZE_SCALE = 0.86
 
-function drawMaizeIcon(ctx, x, y, cellSize) {
+/**
+ * `now` is optional. With it the ear lifts and settles, slowly and out of
+ * phase with its neighbours — about an eightieth of a cell, enough that the
+ * eye registers something alive without being able to point at it.
+ */
+function drawMaizeIcon(ctx, x, y, cellSize, now = null) {
   const s = cellSize
+  const phase = x * 1.7 + y * 2.3
+  // a slow, small lift and nothing else — no wobble, no pulsing light
+  const breath = now === null ? 0 : Math.sin(now / 520 + phase)
   const cx = (x + 0.5) * s
-  const cy = (y + 0.5) * s
+  const cy = (y + 0.5) * s + breath * s * 0.012
   const r = s * MAIZE_SCALE * 0.5
 
   ctx.save()
@@ -242,7 +257,7 @@ function drawMaizeIcon(ctx, x, y, cellSize) {
   ctx.rotate(-0.38)
 
   ctx.shadowColor = COLORS.maizeGlow
-  ctx.shadowBlur = s * 0.32
+  ctx.shadowBlur = s * 0.2
 
   // husk, one leaf swept back off the cob
   ctx.fillStyle = COLORS.maizeHusk
@@ -317,9 +332,9 @@ function drawMaze(ctx, game, cellSize) {
   const ey = (grid.end.y + 0.5) * cellSize
   ctx.save()
   if (game.exitOpen) {
-    const pulse = 0.78 + 0.22 * Math.sin(game.now / 420)
+    const pulse = 0.86 + 0.14 * Math.sin(game.now / 520)
     ctx.shadowColor = COLORS.exitGlow
-    ctx.shadowBlur = cellSize * 0.7 * pulse
+    ctx.shadowBlur = cellSize * 0.4 * pulse
     ctx.fillStyle = COLORS.exit
     ctx.globalAlpha = pulse
     ctx.beginPath()
@@ -349,7 +364,7 @@ function drawMaze(ctx, game, cellSize) {
         cellSize * 0.18, 0, Math.PI * 2)
       ctx.stroke()
     } else {
-      drawMaizeIcon(ctx, flag.x, flag.y, cellSize)
+      drawMaizeIcon(ctx, flag.x, flag.y, cellSize, game.now)
     }
   }
 
@@ -384,12 +399,16 @@ function drawMaze(ctx, game, cellSize) {
    * wall is a collision boundary before it is decoration — the player has to
    * be able to see exactly where it is.
    */
+  /*
+   * One pass, tight. It was two passes at a wider blur, and the walls read as
+   * tubes of light with the corridors lost between the halos. The wall is a
+   * line that happens to be lit, not a lamp.
+   */
   if (ground.glow) {
     ctx.save()
     ctx.shadowColor = ground.glow
-    ctx.shadowBlur = cellSize * 0.55
+    ctx.shadowBlur = cellSize * 0.3
     ctx.strokeStyle = ground.glow
-    traceWalls()
     traceWalls()
     ctx.restore()
   }
@@ -413,22 +432,62 @@ function drawMaze(ctx, game, cellSize) {
  * radius from a wall, so any ink outside that radius reads as the player
  * clipping through a wall that is in fact colliding exactly.
  */
-function drawBall(ctx, ball, cellSize) {
+/**
+ * How the hat is carried this frame, from what the ball is doing.
+ *
+ * Tilt leans it into horizontal motion; bob is the walk. Both are read off the
+ * velocity, so a hat that has stopped is level and still — nothing here
+ * animates on a timer while the player is not doing anything. `scale` is the
+ * arrival: 0 the instant it lands back at the start, swelling past 1 and
+ * settling, so a respawn reads as something appearing rather than as the
+ * previous frame having been a mistake.
+ *
+ * The bob is vertical only and a fiftieth of a cell at full walk. Vertically
+ * the ball always has a wall's-worth of clearance in the corridor it is
+ * walking along; sideways it may be pressed against one, and ink past the
+ * collision radius there reads as clipping (see `ballDrawMetrics`).
+ */
+function hatPose(game) {
+  const { ball, fx } = game
+  const speed = Math.hypot(ball.vx, ball.vy)
+  const walk = Math.min(1, speed / 0.16)
+  const pose = { scale: 1, tilt: 0, bob: 0 }
+
+  pose.tilt = Math.max(-0.18, Math.min(0.18, ball.vx * 1.1))
+  if (walk > 0.25) pose.bob = Math.sin(game.now / 60) * walk * 0.02
+
+  const spawn = fx.length > 0 ? latestFx(game, 'spawn') : null
+  if (spawn) pose.scale = easeOutBack(fxProgress(spawn, game.now))
+
+  return pose
+}
+
+function drawBall(ctx, ball, cellSize, pose = null) {
+  const scale = pose?.scale ?? 1
+  if (scale <= 0.02) return
   const x = ball.x * cellSize
-  const y = ball.y * cellSize
-  const { fillRadius, rimRadius, rimWidth } = ballDrawMetrics(ball.radius, cellSize)
+  const y = (ball.y + (pose?.bob ?? 0)) * cellSize
+  const { fillRadius: r0, rimRadius: rim0, rimWidth } = ballDrawMetrics(ball.radius, cellSize)
+  const fillRadius = r0 * scale
+  const rimRadius = rim0 * scale
+
+  ctx.save()
+  if (pose?.tilt) {
+    ctx.translate(x, y)
+    ctx.rotate(pose.tilt)
+    ctx.translate(-x, -y)
+  }
 
   // the glow it carries, which is what makes it findable under fog
   ctx.save()
   ctx.shadowColor = COLORS.hatGlow
-  ctx.shadowBlur = cellSize * 0.55
+  ctx.shadowBlur = cellSize * 0.32
   ctx.fillStyle = COLORS.hat
 
   // brim: as wide as the ink is allowed to be, and no wider
   ctx.beginPath()
   ctx.ellipse(x, y + fillRadius * 0.26, fillRadius, fillRadius * 0.52, 0, 0, Math.PI * 2)
   ctx.fill()
-  ctx.fill()   // twice: canvas shadows do not accumulate within one fill
 
   // crown, sitting on the brim
   ctx.beginPath()
@@ -461,6 +520,7 @@ function drawBall(ctx, ball, cellSize) {
   ctx.ellipse(x - fillRadius * 0.16, y - fillRadius * 0.30,
     fillRadius * 0.20, fillRadius * 0.14, -0.4, 0, Math.PI * 2)
   ctx.fill()
+  ctx.restore()
 }
 
 /**
@@ -476,12 +536,13 @@ function drawHunter(ctx, game, cellSize) {
   if (!hunter || !hunter.active) return
 
   const x = hunter.x * cellSize
-  const y = hunter.y * cellSize
+  // it drifts rather than walks: a slow rise and fall that no footfall matches
+  const y = (hunter.y + Math.sin(game.now / 360) * 0.03) * cellSize
   const r = hunter.radius * cellSize
 
   // a soft aura, so it reads through fog at the edge of the lit circle
   const aura = ctx.createRadialGradient(x, y, r * 0.5, x, y, r * 2.4)
-  aura.addColorStop(0, `rgba(${COLORS.hunterAura}, 0.34)`)
+  aura.addColorStop(0, `rgba(${COLORS.hunterAura}, 0.22)`)
   aura.addColorStop(1, `rgba(${COLORS.hunterAura}, 0)`)
   ctx.fillStyle = aura
   ctx.beginPath()
@@ -538,11 +599,11 @@ function drawWakeWarning(ctx, game, cellSize) {
 
   const width = game.grid.cols * cellSize
   const height = game.grid.rows * cellSize
-  const pulse = 0.55 + 0.45 * Math.sin((game.now / 1000) * Math.PI * 4)
-  const depth = Math.min(width, height) * 0.22
+  const pulse = 0.6 + 0.4 * Math.sin((game.now / 1000) * Math.PI * 3)
+  const depth = Math.min(width, height) * 0.16
 
   ctx.save()
-  ctx.globalAlpha = progress * pulse * 0.7
+  ctx.globalAlpha = progress * pulse * 0.42
   for (const [x0, y0, x1, y1] of [
     [0, 0, depth, 0], [width, 0, width - depth, 0],
     [0, 0, 0, depth], [0, height, 0, height - depth],
@@ -591,14 +652,14 @@ function getSightCanvas(width, height) {
  * projecting each wall segment's two ends directly away from the light and far
  * enough off the board that the quad between them covers everything behind it;
  * `SHADOW_THROW` is in cells and only has to exceed the diagonal of the largest
- * board, which is 18x11.
+ * board, which is 38x21 (about 43.4).
  *
  * This is presentation and nothing else. `fog` appears nowhere in `solvers.js`
  * or `oracle.js` — the simulated players have their own map and no vision model
  * at all — so tightening or loosening what the player can see cannot make a
  * shipped level unbeatable. That is the only reason this was safe to build.
  */
-const SHADOW_THROW = 40
+const SHADOW_THROW = 60
 
 /**
  * How much further the lantern throws than the old disc did.
@@ -760,8 +821,8 @@ function drawFog(ctx, game, cellSize) {
   const sctx = sight.getContext('2d')
   sctx.globalCompositeOperation = 'source-in'
   const warmth = sctx.createRadialGradient(bx, by, 0, bx, by, radius)
-  warmth.addColorStop(0, 'rgba(255, 206, 122, 0.30)')
-  warmth.addColorStop(0.45, 'rgba(255, 186, 96, 0.16)')
+  warmth.addColorStop(0, 'rgba(255, 206, 122, 0.20)')
+  warmth.addColorStop(0.45, 'rgba(255, 186, 96, 0.10)')
   warmth.addColorStop(1, 'rgba(255, 170, 80, 0)')
   sctx.fillStyle = warmth
   sctx.fillRect(0, 0, width, height)
@@ -773,12 +834,19 @@ function drawFog(ctx, game, cellSize) {
   ctx.restore()
 }
 
+/**
+ * The cell where it happened, held for a moment.
+ *
+ * A soft fill that fades, rather than the opaque slab it was: at full strength
+ * a red tile was the loudest thing on a board made of thin light, and it sat
+ * on top of the fall animation it was meant to be underneath.
+ */
 function drawFlash(ctx, game, cellSize) {
   const flash = game.flash
   if (!flash || game.now >= flash.until) return
 
   const remaining = (flash.until - game.now) / 450
-  const alpha = Math.max(0, Math.min(1, remaining))
+  const alpha = Math.max(0, Math.min(1, remaining)) * 0.28
   const inset = cellSize * MARKER_INSET
 
   ctx.save()
@@ -786,6 +854,177 @@ function drawFlash(ctx, game, cellSize) {
   ctx.fillStyle = flash.kind === 'trap' ? COLORS.trapFlash : COLORS.captureFlash
   roundRect(ctx, flash.x * cellSize + inset, flash.y * cellSize + inset,
     cellSize - inset * 2, cellSize - inset * 2, cellSize * 0.2)
+  ctx.fill()
+  ctx.restore()
+}
+
+// ------------------------------------------------------------------ effects
+
+/**
+ * A handful of motes thrown out from a point, on a fixed spread so the same
+ * event always looks the same. Each one decelerates and fades; `gravity` pulls
+ * kernels down and lets dust hang.
+ */
+function drawMotes(ctx, cx, cy, count, progress, cellSize, { color, reach, size, gravity = 0, seed = 0 }) {
+  const eased = easeOut(progress)
+  ctx.fillStyle = color
+  ctx.globalAlpha = (1 - progress) ** 1.4
+  for (let i = 0; i < count; i++) {
+    const angle = ((i + 0.5) / count) * Math.PI * 2 + seed
+    const throwLen = reach * (0.7 + 0.3 * Math.sin(i * 2.9 + seed)) * cellSize
+    const x = cx + Math.cos(angle) * throwLen * eased
+    const y = cy + Math.sin(angle) * throwLen * eased + gravity * progress * progress * cellSize
+    ctx.beginPath()
+    ctx.arc(x, y, Math.max(0.8, size * cellSize * (1 - progress * 0.6)), 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+/** A ring that grows and thins. */
+function drawRing(ctx, cx, cy, progress, cellSize, { color, from, to, width }) {
+  const eased = easeOut(progress)
+  ctx.strokeStyle = color
+  ctx.globalAlpha = (1 - progress) ** 1.2
+  ctx.lineWidth = Math.max(1, width * cellSize * (1 - progress * 0.7))
+  ctx.beginPath()
+  ctx.arc(cx, cy, (from + (to - from) * eased) * cellSize, 0, Math.PI * 2)
+  ctx.stroke()
+}
+
+/**
+ * Effects that belong to the ground: drawn under the fog, so a knock in a
+ * corridor you cannot see stays unseen.
+ */
+function drawFxUnder(ctx, game, cellSize) {
+  if (game.fx.length === 0) return
+  ctx.save()
+  for (const fx of game.fx) {
+    const p = fxProgress(fx, game.now)
+    if (p >= 1) continue
+    const cx = (fx.kind === 'bump' ? fx.x : fx.x + 0.5) * cellSize
+    const cy = (fx.kind === 'bump' ? fx.y : fx.y + 0.5) * cellSize
+
+    if (fx.kind === 'bump') {
+      // dust off the wall, thrown back the way the hat came
+      drawMotes(ctx, cx, cy, 3, p, cellSize,
+        { color: 'rgba(255, 236, 200, 0.5)', reach: 0.16, size: 0.03, seed: fx.axis === 'x' ? 0.4 : 1.2 })
+    } else if (fx.kind === 'unpick') {
+      // an ear going back where it lay: the pick, run backwards and dimmer
+      drawRing(ctx, cx, cy, 1 - p, cellSize, { color: COLORS.maizeTaken, from: 0.2, to: 0.55, width: 0.05 })
+      ctx.globalAlpha = 0.35 * p
+      drawMaizeIcon(ctx, fx.x, fx.y, cellSize)
+    } else if (fx.kind === 'pick') {
+      // the ear comes up: kernels out, a ring, and the ear itself swelling away
+      drawRing(ctx, cx, cy, p, cellSize, { color: COLORS.maize, from: 0.2, to: 0.55, width: 0.05 })
+      drawMotes(ctx, cx, cy, 6, p, cellSize,
+        { color: COLORS.maize, reach: 0.42, size: 0.04, gravity: 0.3, seed: 0.3 })
+      if (p < 0.35) {
+        // the ear itself, swelling and going: re-plotted at a larger cell
+        // size around the same centre rather than ctx.scale'd, so the
+        // headless stubs that lack `scale` still run the frame
+        const size = cellSize * (1 + easeOut(p / 0.35) * 0.35)
+        ctx.globalAlpha = 1 - p / 0.35
+        drawMaizeIcon(ctx, cx / size - 0.5, cy / size - 0.5, size)
+      }
+    }
+  }
+  ctx.restore()
+}
+
+/**
+ * Effects that belong to the player and the story: over the fog, because the
+ * fall, the way opening and the ghost waking are things he knows happened
+ * whether or not he can see the ground they happened on.
+ */
+function drawFxOver(ctx, game, cellSize) {
+  if (game.fx.length === 0) return
+  ctx.save()
+  for (const fx of game.fx) {
+    const p = fxProgress(fx, game.now)
+    if (p >= 1) continue
+    const cx = (fx.x + 0.5) * cellSize
+    const cy = (fx.y + 0.5) * cellSize
+
+    if (fx.kind === 'fall') {
+      /*
+       * Down the hole: the ground opens, the hat drops through it shrinking
+       * and turning, the hole closes. Caught is the same fall in the ghost's
+       * colour — the board is stopped under the overlay, so it holds.
+       */
+      const open = p < 0.3 ? easeOut(p / 0.3) : 1 - easeIn((p - 0.3) / 0.7)
+      ctx.globalAlpha = 0.9
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'
+      ctx.beginPath()
+      ctx.ellipse(cx, cy + cellSize * 0.08, cellSize * 0.34 * open, cellSize * 0.2 * open, 0, 0, Math.PI * 2)
+      ctx.fill()
+
+      const drop = clamp01(p / 0.55)
+      if (drop < 1) {
+        const ghost = {
+          x: fx.x + 0.5,
+          y: fx.y + 0.5 + easeIn(drop) * 0.25,
+          radius: game.ball.radius,
+        }
+        drawBall(ctx, ghost, cellSize, { scale: 1 - easeIn(drop), tilt: drop * (fx.caught ? -1.2 : 0.8), bob: 0 })
+      }
+      drawMotes(ctx, cx, cy, 4, p, cellSize, {
+        color: fx.caught ? `rgba(${COLORS.hunterAura}, 0.7)` : 'rgba(120, 90, 60, 0.7)',
+        reach: 0.36, size: 0.04, gravity: 0.45, seed: 0.7,
+      })
+    } else if (fx.kind === 'unlock') {
+      // the way on is open: one ring from where the last ear was, drawn over
+      // the fog so the moment registers on a board that is mostly dark
+      drawRing(ctx, cx, cy, p, cellSize, { color: COLORS.exit, from: 0.3, to: 3.2, width: 0.07 })
+    } else if (fx.kind === 'wake') {
+      drawRing(ctx, cx, cy, p, cellSize, { color: `rgba(${COLORS.hunterAura}, 0.8)`, from: 0.3, to: 1.6, width: 0.07 })
+    }
+  }
+  ctx.restore()
+}
+
+/** How long the hat takes to go into the exit once the level is won. */
+const OUTRO_MS = 720
+
+/**
+ * The end of the field: the hat sinks into the open exit and the exit's light
+ * goes out across the board. Runs on `game.outro`, the one clock that advances
+ * after a win, because the time on the card has to be the time you finished.
+ */
+function drawOutro(ctx, game, cellSize) {
+  const t = clamp01(game.outro / OUTRO_MS)
+  const ex = (game.grid.end.x + 0.5) * cellSize
+  const ey = (game.grid.end.y + 0.5) * cellSize
+
+  ctx.save()
+  drawRing(ctx, ex, ey, t, cellSize, { color: COLORS.exit, from: 0.3, to: 3.6, width: 0.08 })
+  ctx.globalAlpha = (1 - t) * 0.3
+  ctx.fillStyle = COLORS.exitGlow
+  ctx.beginPath()
+  ctx.arc(ex, ey, cellSize * (0.3 + easeOut(t) * 0.8), 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+/**
+ * The touch stick, where the finger is. Drawn last and lightly: it is the
+ * player's own thumb, not part of the field.
+ */
+function drawStick(ctx, game, cellSize) {
+  const stick = game.stick
+  if (!stick) return
+  const ox = stick.x * cellSize
+  const oy = stick.y * cellSize
+  ctx.save()
+  ctx.globalAlpha = 0.14
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = Math.max(1, cellSize * 0.035)
+  ctx.beginPath()
+  ctx.arc(ox, oy, cellSize * 0.85, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.globalAlpha = 0.26
+  ctx.fillStyle = '#ffffff'
+  ctx.beginPath()
+  ctx.arc(ox + stick.dx * cellSize, oy + stick.dy * cellSize, cellSize * 0.32, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 }
@@ -825,26 +1064,47 @@ function drawTrail(ctx, game, cellSize) {
  */
 function drawScene(ctx, game, cellSize) {
   const shaking = game.shake > 0
-  if (shaking) {
-    const force = (game.shake / 420) * cellSize * 0.22
+  const camera = game.camera
+  const moved = shaking || Boolean(camera && (camera.x !== 0 || camera.y !== 0))
+  if (moved) {
     ctx.save()
-    ctx.translate((Math.random() - 0.5) * force, (Math.random() - 0.5) * force)
+    if (camera) {
+      // the ground behind a scrolled board, so a shake never shows the page
+      ctx.fillStyle = terrainOf(game.grid).bg
+      ctx.fillRect(0, 0, 1e5, 1e5)
+      ctx.translate(-camera.x * cellSize, -camera.y * cellSize)
+    }
+    if (shaking) {
+      const force = (game.shake / 420) * cellSize * 0.14
+      ctx.translate((Math.random() - 0.5) * force, (Math.random() - 0.5) * force)
+    }
   }
 
   drawMaze(ctx, game, cellSize)
+  drawFxUnder(ctx, game, cellSize)
   drawTrail(ctx, game, cellSize)
-  drawBall(ctx, game.ball, cellSize)
+  if (game.won) {
+    // going in: the hat shrinks into the exit and turns as it goes
+    const t = clamp01(game.outro / OUTRO_MS)
+    drawBall(ctx, game.ball, cellSize, { scale: 1 - easeIn(t), tilt: t * 0.9, bob: 0 })
+  } else {
+    drawBall(ctx, game.ball, cellSize, hatPose(game))
+  }
   drawFog(ctx, game, cellSize)
   drawHunter(ctx, game, cellSize)
   drawWakeWarning(ctx, game, cellSize)
   drawFlash(ctx, game, cellSize)
+  drawFxOver(ctx, game, cellSize)
+  if (game.won) drawOutro(ctx, game, cellSize)
+  drawStick(ctx, game, cellSize)
 
-  if (shaking) ctx.restore()
+  if (moved) ctx.restore()
 }
 
 export {
   COLORS, TERRAINS, SURFACE_TINTS, SURFACE_EDGES, terrainOf, drawSurfaces,
-  WALL_WIDTH, MAIZE_SCALE, LANTERN_REACH, setupCanvas, ballDrawMetrics,
-  drawMaizeIcon,
+  WALL_WIDTH, MAIZE_SCALE, LANTERN_REACH, OUTRO_MS, setupCanvas, ballDrawMetrics,
+  drawMaizeIcon, hatPose,
   drawScene, drawMaze, drawBall, drawTrail, drawFog, drawHunter, drawWakeWarning,
+  drawFxUnder, drawFxOver, drawOutro, drawStick,
 }

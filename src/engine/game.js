@@ -35,6 +35,7 @@ import { createBall, resetBall, stepBall, ballCell } from './physics.js'
 import { key, trapSet, flagSet, surfaceAt } from './grid.js'
 import { createHunter, sleepHunter, stepHunter } from './hunter.js'
 import { NEUTRAL } from './assist.js'
+import { pushFx, pruneFx, bumpAxis } from './fx.js'
 /*
  * Every word the player reads lives in src/content.js, including these. The
  * engine imports them rather than holding them so that changing what the farmer
@@ -42,13 +43,14 @@ import { NEUTRAL } from './assist.js'
  */
 import {
   DEATH_QUIPS, WEARY_QUIPS, QUIPS_BEFORE_WEARY,
-  CAUGHT_QUIPS, PICKED_ONE, PICKED_LAST, GHOST_WOKE,
+  CAUGHT_QUIPS, LOST_MAIZE_QUIPS, PICKED_ONE, PICKED_LAST, GHOST_WOKE,
 } from '../content.js'
 
 const STEP_MS = 1000 / 60
 const TRAIL_LENGTH = 14
 const RESPAWN_FLASH_MS = 450
 const CAPTURE_FLASH_MS = 700
+const BUMP_SOUND_GAP_MS = 140
 
 /**
  * @param {object} grid
@@ -88,6 +90,11 @@ function createGame(grid, assist = NEUTRAL) {
     trail: [],           // recent ball positions, oldest first
     cell: null,          // the cell the ball was in last step, for footfalls
     quip: '',
+    camera: null,        // { x, y } in cells when the board is bigger than the view
+    fx: [],              // timestamped presentation events; see engine/fx.js
+    outro: 0,            // ms since the level was won; the only clock that runs after
+    stick: null,         // the touch stick, in cell coordinates, while a finger is down
+    lastBump: -1e9,      // game time of the last audible knock, to rate-limit it
 
     /*
      * Where in the oath list this field starts.
@@ -125,15 +132,43 @@ function quipFor(game) {
   return WEARY_QUIPS[(game.quipOffset + game.deaths) % WEARY_QUIPS.length]
 }
 
-/** A trap. Costs the walk back and nothing else — picked maize is never lost. */
+/**
+ * A trap.
+ *
+ * Before the ghost chapters it costs the walk back and nothing else. Once a
+ * field has something hunting in it, a fall costs the field: every picked ear
+ * goes back where it lay, the way it does when the ghost catches you. The
+ * stakes step up on the same level the ghost arrives, and never step down.
+ *
+ * That is a change to the rule that used to say "picked maize is never lost
+ * to a trap". It still holds on every field without a hunter, which is where
+ * the class of bug it guarded against — needing to die to learn a trap, and
+ * losing progress for learning it — would actually hurt. On a hunted field
+ * the player has already learned to keep the walk short.
+ */
 function die(game, at) {
   game.deaths += 1
-  game.shake = game.assist.steadyBoard ? 0 : 240
+  game.shake = game.assist.steadyBoard ? 0 : 170
   resetBall(game.ball, game.grid)
   // back at the start, so the hunter loses interest and its clock restarts
   sleepHunter(game.hunter, game.now)
   game.flash = { x: at.x, y: at.y, until: game.now + RESPAWN_FLASH_MS, kind: 'trap' }
-  game.quip = quipFor(game)
+  game.trail = []
+
+  const costsTheField = game.hunter !== null && game.captured.size > 0
+  if (costsTheField) {
+    for (const id of game.captured) {
+      const comma = id.indexOf(',')
+      pushFx(game, 'unpick', { x: +id.slice(0, comma), y: +id.slice(comma + 1) })
+    }
+    game.captured.clear()
+    game.exitOpen = game.grid.flags.length === 0
+    game.quip = LOST_MAIZE_QUIPS[(game.quipOffset + game.deaths) % LOST_MAIZE_QUIPS.length]
+  } else {
+    game.quip = quipFor(game)
+  }
+  pushFx(game, 'fall', at)
+  pushFx(game, 'spawn', game.grid.start)
   emit(game, 'death')
   if (game.onDeath) game.onDeath(at, 'trap')
 }
@@ -148,8 +183,9 @@ function die(game, at) {
  */
 function lose(game, at) {
   game.lost = true
-  game.shake = game.assist.steadyBoard ? 0 : 420
+  game.shake = game.assist.steadyBoard ? 0 : 300
   game.flash = { x: at.x, y: at.y, until: game.now + RESPAWN_FLASH_MS, kind: 'trap' }
+  pushFx(game, 'fall', at, { caught: true })
   game.quip = CAUGHT_QUIPS[(game.quipOffset + game.deaths + 1) % CAUGHT_QUIPS.length]
   emit(game, 'caught')
   if (game.onLose) game.onLose(at)
@@ -170,17 +206,48 @@ function capture(game, at) {
   sleepHunter(game.hunter, game.now)
   game.flash = { x: at.x, y: at.y, until: game.now + CAPTURE_FLASH_MS, kind: 'flag' }
   game.quip = game.exitOpen ? PICKED_LAST : PICKED_ONE
+  game.trail = []
+  pushFx(game, 'pick', at)
+  if (game.exitOpen) pushFx(game, 'unlock', at)
+  pushFx(game, 'spawn', game.grid.start)
   emit(game, game.exitOpen ? 'unlock' : 'capture')
   if (game.onCapture) game.onCapture(at)
 }
 
 /** One fixed step. `game.now` advances by exactly STEP_MS. */
 function stepGame(game) {
-  if (game.won || game.lost || game.paused) return
+  /*
+   * After a win the rules are over and `game.now` stays where it was — the
+   * time on the card is the time you finished in. The board still has the hat
+   * to walk into the exit, though, so one presentation clock keeps running.
+   */
+  if (game.won) { game.outro += STEP_MS; return }
+  if (game.lost || game.paused) return
 
   game.now += STEP_MS
   if (game.shake > 0) game.shake = Math.max(0, game.shake - STEP_MS)
+  pruneFx(game)
+
+  const vxBefore = game.ball.vx
+  const vyBefore = game.ball.vy
   stepBall(game.ball, game.input, game.grid)
+
+  /*
+   * A knock against a wall, shown and — sparingly — heard. Read off the
+   * velocity rather than reported by the physics, so `stepBall` stays exactly
+   * the function the solvers were proven against.
+   */
+  const struck = bumpAxis({ vx: vxBefore, vy: vyBefore }, game.ball)
+  if (struck) {
+    pushFx(game, 'bump', {
+      x: game.ball.x + (struck === 'x' ? Math.sign(vxBefore) * game.ball.radius : 0),
+      y: game.ball.y + (struck === 'y' ? Math.sign(vyBefore) * game.ball.radius : 0),
+    }, { axis: struck })
+    if (game.now - game.lastBump > BUMP_SOUND_GAP_MS) {
+      game.lastBump = game.now
+      emit(game, 'bump')
+    }
+  }
 
   /*
    * A short tail behind the hat. Sampled every few steps rather than every one:
@@ -230,6 +297,7 @@ function stepGame(game) {
     lose(game, cell)
   } else if (wasAsleep && game.hunter.active) {
     game.quip = GHOST_WOKE
+    pushFx(game, 'wake', { x: game.hunter.x, y: game.hunter.y })
     emit(game, 'hunter')
   }
 }
@@ -251,6 +319,9 @@ function restartGame(game) {
   game.trail = []
   game.cell = null
   game.quip = ''
+  game.fx = []
+  game.outro = 0
+  game.lastBump = -1e9
 }
 
 /** The small flat object React renders. No collections cross this boundary. */

@@ -74,9 +74,9 @@ const CHAPTER_BEATS = {
     lines: [
       n('Further out than my land goes, now. I have not stopped to think about that.'),
       v('…leave the sacks. take the girl.'),
-      v('…first light, then. all three carts, first light.'),
+      v('…three carts. we go when we go.'),
       n('I am gathering what fell. That is all this is.'),
-      n('There is a whole night between here and first light. That is plenty.'),
+      n('I did not ask when. I did not want the answer, so I did not ask.'),
       v('…i’m dropping them where you’ll look, papa…'),
     ],
   },
@@ -181,6 +181,28 @@ const CHAPTER_BEATS = {
   },
 }
 
+// The last three chapters are the same dark getting bigger. The story goes
+// quiet with him: fewer lines, and the voices thinning to almost nothing.
+CHAPTER_BEATS['Nothing Stays'] = {
+  id: 'ch-nothing-stays',
+  lines: [
+    n('Smoke, and their fires, and then the fires are behind me and the trail is still going.'),
+    n('It was not the camp. It was where they stopped for a night.'),
+    v('…'),
+    n('The fields out here are bigger than any I have walked. Bigger than any I own.'),
+  ],
+}
+
+CHAPTER_BEATS['The Long Dark'] = {
+  id: 'ch-long-dark',
+  lines: [
+    n('I have stopped counting the ears. I pick them up and I do not count.'),
+    n('There is no edge to this ground. I walk until the walls stop and they do not stop.'),
+    v('…papa…'),
+    n('Further off than it was. Or I am slower. One of the two.'),
+  ],
+}
+
 /** After the last chapter: the bargain. `maize` is the tally shown alongside. */
 const BARGAIN = {
   id: 'bargain',
@@ -196,15 +218,25 @@ const BARGAIN = {
   action: 'hand it over',
 }
 
+/**
+ * The twist, and the first time the game says the word "late".
+ *
+ * Act one never names an hour. The carts are mentioned, the counting is heard,
+ * the clock on the level list has been ticking the whole time — but nobody
+ * tells him when they leave, because he does not ask. This is where he finds
+ * out, and where the player finds out that the number they have been looking
+ * at was the one that mattered. Act two is what he does about it.
+ */
 const TOO_LATE = {
   id: 'too-late',
   title: 'Too late',
   lines: [
     n('He counts it. Of course he does. He has been counting the whole way — I have been hearing him count since the ridge.'),
     n('Then he counts it again, slower, watching me the whole time. Then he smiles.'),
-    v('"First light, farmer. You heard us say it the night you crossed your own gate."'),
-    v('"She went out on the first cart. You walked it like a man with a night to spare."'),
-    n('I had a night to spare. I have been counting it too.'),
+    v('"First light, farmer. The first cart went at first light."'),
+    v('"You never asked when. You walked it like a man with a night to spare."'),
+    n('I never asked. I have been walking with the whole night in my pocket and she went at first light.'),
+    n('Not fast enough. That is the whole of it.'),
   ],
   action: 'go back. be faster.',
 }
@@ -215,7 +247,7 @@ const SPEEDRUN_BRIEF = {
   lines: [
     n('Not all of it again. There is no night left for all of it again.'),
     n('The worst field of every stretch, in the dark, with the thing that follows and the ground that closes — and each one quicker than I walked it the first time.'),
-    n('That is the whole of it. Eleven fields and a night.'),
+    n('That is the whole of it. Thirteen fields and a night.'),
     v('papa'),
     n('Ahead of me, this time.'),
   ],
@@ -272,16 +304,18 @@ const LOST_HER = {
 const WHISPERS = {
   'Warm Up 2': '…where did she go…',
   'Two Trips 1': '…they came up the west track…',
-  'Two Trips 2': '…first light, he said. first light…',
+  'Two Trips 2': '…he’s coming. of course he’s coming…',
   'First Light 2': '…count them. count them, papa…',
   'The Fog 1': '…she’s still dropping them…',
   'Company 2': '…don’t look back…',
-  'No Mercy 2': '…first light. the cart at first light…',
+  'No Mercy 2': '…she goes on the first cart…',
   'Forgetting 2': '…he’s still out there?…',
   'The Dry Reach 2': '…faster here. careful…',
   'The White Mile 2': '…she left the path…',
   'The Lit Wood 2': '…the lights aren’t trees…',
   'Nothing Stays 2': '…almost, papa…',
+  'The Long Dark 1': '…it goes on and on out here…',
+  'The Fires 2': '…papa. i can see you…',
 }
 
 
@@ -305,6 +339,17 @@ const DEATH_QUIPS = [
   'Sakes alive, the ground is against me now as well.',
   'Jumping junebugs, that smarts. She would have laughed at that.',
   'Blast and bother. Back to the start, and no nearer to her.',
+]
+
+/*
+ * A fall on a hunted field, where a fall costs every ear picked so far. He
+ * knows what it cost; he does not make a joke of it.
+ */
+const LOST_MAIZE_QUIPS = [
+  'Down a hole, and every ear back where it lay.',
+  'The ground has all of it again. Up.',
+  'All of them, back on the ground. From the start, then.',
+  'Every one of hers, dropped again. Get up.',
 ]
 
 const CAUGHT_QUIPS = [
@@ -346,5 +391,5 @@ export {
   PROLOGUE, CHAPTER_BEATS, BARGAIN, TOO_LATE, SPEEDRUN_BRIEF, ENDING, LOST_HER,
   WHISPERS,
   DEATH_QUIPS, WEARY_QUIPS, QUIPS_BEFORE_WEARY,
-  CAUGHT_QUIPS, PICKED_ONE, PICKED_LAST, GHOST_WOKE,
+  CAUGHT_QUIPS, LOST_MAIZE_QUIPS, PICKED_ONE, PICKED_LAST, GHOST_WOKE,
 }

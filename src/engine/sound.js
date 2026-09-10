@@ -31,8 +31,8 @@ let audioCtx = null
 let volume = (() => {
   try {
     const stored = Number(localStorage.getItem(VOLUME_KEY))
-    return Number.isFinite(stored) && stored >= 0 && stored <= 1 ? stored : 0.7
-  } catch { return 0.7 }
+    return Number.isFinite(stored) && stored >= 0 && stored <= 1 ? stored : 0.55
+  } catch { return 0.55 }
 })()
 let muted = (() => {
   try { return localStorage.getItem(MUTE_KEY) === '1' } catch { return false }
@@ -105,24 +105,34 @@ const VOICES = {
    * fronted by a filtered noise transient: an impact reads through a drone in a
    * way a pitch does not.
    */
+  /*
+   * Everything here is quiet on purpose. The one-shots used to sit a good
+   * third louder than this and the field sounded like an arcade; a man
+   * walking a dark field at night makes small sounds, and so should his game.
+   * Triangles rather than sawtooths and squares wherever a tone is needed —
+   * the same pitch with less edge on it.
+   */
   death: (ctx) => {
-    thud(ctx, { cutoff: 900, gain: 0.20, duration: 0.14, q: 0.9 })
-    tone(ctx, { type: 'sawtooth', from: 340, to: 130, gain: 0.17, duration: 0.24 })
+    thud(ctx, { cutoff: 800, gain: 0.13, duration: 0.12, q: 0.9 })
+    tone(ctx, { type: 'triangle', from: 300, to: 130, gain: 0.10, duration: 0.2 })
   },
-  capture: (ctx) => tone(ctx, { from: 660, to: 990, gain: 0.16, duration: 0.18 }),
-  unlock: (ctx) => [523, 659, 784].forEach((f, i) =>
-    tone(ctx, { from: f, gain: 0.16, duration: 0.24, delay: i * 0.09 })),
-  win: (ctx) => [523, 659, 784, 1047].forEach((f, i) =>
-    tone(ctx, { from: f, gain: 0.18, duration: 0.3, delay: i * 0.11 })),
+
+  // a knock against a wall: barely there, and rate-limited by the engine
+  bump: (ctx) => thud(ctx, { cutoff: 560, gain: 0.028, duration: 0.04, q: 1.2 }),
+  capture: (ctx) => tone(ctx, { type: 'triangle', from: 660, to: 880, gain: 0.09, duration: 0.16 }),
+  unlock: (ctx) => [659, 988].forEach((f, i) =>
+    tone(ctx, { type: 'triangle', from: f, gain: 0.09, duration: 0.22, delay: i * 0.1 })),
+  win: (ctx) => [523, 659, 784].forEach((f, i) =>
+    tone(ctx, { type: 'triangle', from: f, gain: 0.1, duration: 0.28, delay: i * 0.12 })),
 
   // the hunter waking: two low notes, falling, so it is unmistakably not a
   // reward sound even with the tab in the background
   hunter: (ctx) => [[196, 0], [147, 0.14]].forEach(([f, delay]) =>
-    tone(ctx, { type: 'triangle', from: f, to: f * 0.72, gain: 0.15, duration: 0.34, delay })),
+    tone(ctx, { type: 'triangle', from: f, to: f * 0.72, gain: 0.1, duration: 0.3, delay })),
 
   caught: (ctx) => {
-    thud(ctx, { cutoff: 500, gain: 0.22, duration: 0.3, q: 0.7 })
-    tone(ctx, { type: 'square', from: 240, to: 90, gain: 0.15, duration: 0.42 })
+    thud(ctx, { cutoff: 450, gain: 0.15, duration: 0.26, q: 0.7 })
+    tone(ctx, { type: 'triangle', from: 220, to: 90, gain: 0.1, duration: 0.36 })
   },
 }
 
@@ -176,9 +186,9 @@ const getVolume = () => volume
  * told to listen for it.
  */
 const FOOTFALLS = {
-  0: { cutoff: 420, gain: 0.055, duration: 0.07, q: 1.2 },   // ordinary ground
-  1: { cutoff: 1500, gain: 0.05, duration: 0.05, q: 2.4 },   // sand
-  2: { cutoff: 240, gain: 0.032, duration: 0.11, q: 0.8 },   // snow
+  0: { cutoff: 420, gain: 0.036, duration: 0.07, q: 1.2 },   // ordinary ground
+  1: { cutoff: 1500, gain: 0.032, duration: 0.05, q: 2.4 },  // sand
+  2: { cutoff: 240, gain: 0.022, duration: 0.11, q: 0.8 },   // snow
 }
 
 /** A single footfall on `surface`. Cheap enough to fire several times a second. */
@@ -220,17 +230,17 @@ function playStep(surface = 0) {
  * when it changes, which is once a chapter.
  */
 const AMBIENCE = {
-  field:     { wind: 380, windGain: 0.010, drone: 82, droneGain: 0.014 },
-  track:     { wind: 460, windGain: 0.012, drone: 78, droneGain: 0.013 },
-  dusk:      { wind: 300, windGain: 0.013, drone: 69, droneGain: 0.016 },
-  woods:     { wind: 240, windGain: 0.015, drone: 62, droneGain: 0.018 },
-  night:     { wind: 190, windGain: 0.014, drone: 55, droneGain: 0.020 },
-  ridge:     { wind: 620, windGain: 0.020, drone: 58, droneGain: 0.016 },
-  desert:    { wind: 720, windGain: 0.017, drone: 73, droneGain: 0.012 },
-  snow:      { wind: 520, windGain: 0.022, drone: 49, droneGain: 0.018 },
-  marsh:     { wind: 210, windGain: 0.016, drone: 52, droneGain: 0.020 },
-  enchanted: { wind: 160, windGain: 0.011, drone: 44, droneGain: 0.026 },
-  ember:     { wind: 340, windGain: 0.018, drone: 47, droneGain: 0.022 },
+  field:     { wind: 380, windGain: 0.007, drone: 82, droneGain: 0.0098 },
+  track:     { wind: 460, windGain: 0.0084, drone: 78, droneGain: 0.0091 },
+  dusk:      { wind: 300, windGain: 0.0091, drone: 69, droneGain: 0.0112 },
+  woods:     { wind: 240, windGain: 0.0105, drone: 62, droneGain: 0.0126 },
+  night:     { wind: 190, windGain: 0.0098, drone: 55, droneGain: 0.014 },
+  ridge:     { wind: 620, windGain: 0.014, drone: 58, droneGain: 0.0112 },
+  desert:    { wind: 720, windGain: 0.0119, drone: 73, droneGain: 0.0084 },
+  snow:      { wind: 520, windGain: 0.0154, drone: 49, droneGain: 0.0126 },
+  marsh:     { wind: 210, windGain: 0.0112, drone: 52, droneGain: 0.014 },
+  enchanted: { wind: 160, windGain: 0.0077, drone: 44, droneGain: 0.0182 },
+  ember:     { wind: 340, windGain: 0.0126, drone: 47, droneGain: 0.0154 },
 }
 
 let bed = null
@@ -310,7 +320,7 @@ function setHunterProximity(nearness) {
   if (!bed) return
   try {
     const { ctx, dreadGain } = bed
-    const target = Math.max(0, Math.min(1, nearness)) ** 1.6 * 0.09 * volume
+    const target = Math.max(0, Math.min(1, nearness)) ** 1.6 * 0.06 * volume
     const now = ctx.currentTime
     dreadGain.gain.cancelScheduledValues(now)
     dreadGain.gain.setTargetAtTime(target, now, 0.12)

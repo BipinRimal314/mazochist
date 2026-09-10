@@ -1,6 +1,6 @@
 # Journey to Maizy
 
-Twenty-six mazes. You cannot see most of them. You are a farmer following a
+Thirty mazes. You cannot see most of them. You are a farmer following a
 trail of dropped corn to the daughter who dropped it, something in the later
 ones is looking for you, and towards the end you stop being able to trust your
 own map.
@@ -31,9 +31,11 @@ npm run build
   always knows where you are, and it is slower than you. **Touching it loses the
   level.** Returning to the start puts it back to sleep.
 
-That is all of them. **A trap never costs you maize**, and that one rule removes
-the whole class of "you must die to make progress, but dying undoes your
-progress".
+That is all of them, with one turn of the screw: **once a field has a hunter
+in it, a trap costs the maize too.** Before that a trap never costs you maize,
+which removes the whole class of "you must die to make progress, but dying
+undoes your progress" from the fields where a player is still learning what a
+trap is. On a hunted field they know, and the stakes go up with them.
 
 The two failure modes are deliberately not the same weight. A trap costs the
 walk back and nothing else. The hunter costs the level — it is the only thing in
@@ -45,6 +47,15 @@ survives your respawn can sit on the start square and kill you the instant you
 appear, which is not difficulty, it is a soft lock. Sleeping on every return
 also means the hunter's clock and your current attempt are the same clock, so
 the thing you have to reason about is exactly the thing on screen.
+
+## Feel
+
+Everything the board *shows* happening — the fall, the arrival, the pick, the
+way opening, a knock on a wall, the hat going into the exit — is a timestamped
+record in `engine/fx.js` that the renderer reads and the rules never do. A game
+whose effects are stripped every step plays identically to one that keeps them,
+and there is a test that says so. The title card holds the field paused, so
+the time on the card is time spent walking.
 
 ## The story
 

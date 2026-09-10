@@ -13,21 +13,47 @@ import { useState, useEffect } from 'react'
 const MIN_CELL = 14
 const MAX_CELL = 72
 
+/**
+ * Below this the board stops being readable, so rather than shrink further the
+ * view becomes a window onto it that follows the hat. The late fields are
+ * 38 cells wide: on a desktop they fit whole, on a phone they scroll.
+ */
+const VIEW_CELL = 26
+
 function measure(cols, rows, reservedHeight) {
   // Boards are landscape now, so width is the dimension worth spending. The
   // old 900px ceiling left a wide window with a stamp in the middle of it.
   const availableWidth = Math.min(window.innerWidth - 32, 1400)
-  const availableHeight = window.innerHeight - reservedHeight
+  const availableHeight = Math.max(160, window.innerHeight - reservedHeight)
 
-  const size = Math.floor(Math.min(availableWidth / cols, availableHeight / rows))
-  return Math.max(MIN_CELL, Math.min(MAX_CELL, size))
+  const fit = Math.floor(Math.min(availableWidth / cols, availableHeight / rows))
+  if (fit >= VIEW_CELL) {
+    const cellSize = Math.min(MAX_CELL, fit)
+    return { cellSize, viewCols: cols, viewRows: rows, scrolls: false }
+  }
+
+  // too big to show whole: a window that follows the hat
+  const cellSize = VIEW_CELL
+  return {
+    cellSize,
+    viewCols: Math.min(cols, Math.max(6, Math.floor(availableWidth / cellSize))),
+    viewRows: Math.min(rows, Math.max(5, Math.floor(availableHeight / cellSize))),
+    scrolls: true,
+  }
 }
 
+const same = (a, b) =>
+  a.cellSize === b.cellSize && a.viewCols === b.viewCols && a.viewRows === b.viewRows
+
+/** @returns {{ cellSize, viewCols, viewRows, scrolls }} */
 function useCellSize(cols, rows, reservedHeight = 260) {
-  const [cellSize, setCellSize] = useState(() => measure(cols, rows, reservedHeight))
+  const [view, setView] = useState(() => measure(cols, rows, reservedHeight))
 
   useEffect(() => {
-    const update = () => setCellSize(measure(cols, rows, reservedHeight))
+    const update = () => {
+      const next = measure(cols, rows, reservedHeight)
+      setView((prev) => (same(prev, next) ? prev : next))
+    }
     update()
 
     window.addEventListener('resize', update)
@@ -38,7 +64,7 @@ function useCellSize(cols, rows, reservedHeight = 260) {
     }
   }, [cols, rows, reservedHeight])
 
-  return cellSize
+  return view
 }
 
-export { useCellSize, MIN_CELL, MAX_CELL }
+export { useCellSize, MIN_CELL, MAX_CELL, VIEW_CELL }

@@ -84,6 +84,20 @@ function useGameInput(game, boardRef, actions = {}) {
     let pointerId = null
     let originX = 0
     let originY = 0
+    // the canvas, measured on touch, so the stick can be drawn in cell units
+    let rect = null
+    let pxPerCell = 1
+
+    const showStick = (dx, dy) => {
+      if (!rect) return
+      // the stick is drawn in board space, so a scrolled view is added back
+      game.stick = {
+        x: (originX - rect.left) / pxPerCell + (game.camera?.x ?? 0),
+        y: (originY - rect.top) / pxPerCell + (game.camera?.y ?? 0),
+        dx: dx / pxPerCell,
+        dy: dy / pxPerCell,
+      }
+    }
 
     const onPointerDown = (e) => {
       if (pointerId !== null) return
@@ -104,6 +118,11 @@ function useGameInput(game, boardRef, actions = {}) {
       pointerId = e.pointerId
       originX = e.clientX
       originY = e.clientY
+      rect = e.target.getBoundingClientRect?.() ?? null
+      // the loop records the cell's CSS size; the canvas may be a window onto
+      // a larger board, so its width over the column count is not reliable
+      pxPerCell = game.cellPx ?? (rect && rect.width > 0 ? rect.width / game.grid.cols : 1)
+      showStick(0, 0)
       board.setPointerCapture?.(e.pointerId)
     }
 
@@ -127,11 +146,13 @@ function useGameInput(game, boardRef, actions = {}) {
       game.input.right = dx > DEAD_ZONE
       game.input.up = dy < -DEAD_ZONE
       game.input.down = dy > DEAD_ZONE
+      showStick(dx, dy)
     }
 
     const onPointerEnd = (e) => {
       if (e.pointerId !== pointerId) return
       pointerId = null
+      game.stick = null
       clearInput(game.input)
     }
 
@@ -140,6 +161,7 @@ function useGameInput(game, boardRef, actions = {}) {
     board.addEventListener('pointerup', onPointerEnd)
     board.addEventListener('pointercancel', onPointerEnd)
     return () => {
+      game.stick = null
       board.removeEventListener('pointerdown', onPointerDown)
       board.removeEventListener('pointermove', onPointerMove)
       board.removeEventListener('pointerup', onPointerEnd)

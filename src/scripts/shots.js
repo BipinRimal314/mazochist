@@ -69,11 +69,22 @@ const SHOTS = [
   { label: '08-fading', name: 'Forgetting 1', drive: [['right', 120], ['down', 110]] },
   { label: '09-neon', name: 'The Lit Wood 1', drive: [['right', 130], ['down', 110], ['right', 120]] },
   { label: '10-ember', name: 'Nothing Stays 3', drive: [['left', 120], ['up', 100]] },
+
+  // the effects: each frozen a few steps into its animation
+  { label: '11-fall', name: 'Two Trips 1', drive: [['right', 90], ['down', 80]], after: { kind: 'fall', steps: 14 } },
+  { label: '12-pick', name: 'Warm Up 1', after: { kind: 'pick', steps: 12 } },
+  { label: '13-unlock', name: 'Warm Up 1', after: { kind: 'unlock', steps: 20 } },
+  { label: '14-won', name: 'Warm Up 1', after: { kind: 'won', steps: 22 } },
+  { label: '15-stick', name: 'Warm Up 1', drive: [['right', 40]], stick: true },
+
+  // the big boards, whole
+  { label: '16-vast', name: 'The Long Dark 1', drive: [['right', 160], ['down', 140], ['left', 120]] },
+  { label: '17-endless', name: 'The Fires 2', drive: [['left', 200], ['down', 160], ['right', 180], ['up', 120]] },
 ]
 
 const DIRECTIONS = ['up', 'down', 'left', 'right']
 
-function shoot({ label, name, steps = 0, drive = [] }) {
+function shoot({ label, name, steps = 0, drive = [], after = null, stick = false }) {
   const data = levels.find((level) => level.name === name)
   if (!data) {
     console.error(`no level named "${name}" — the campaign may have been re-cut`)
@@ -91,6 +102,31 @@ function shoot({ label, name, steps = 0, drive = [] }) {
   }
   for (const key of DIRECTIONS) game.input[key] = false
   for (let i = taken; i < steps; i++) stepGame(game)
+
+  /*
+   * Force an event rather than steering into one: the point is to see the
+   * animation, and finding a trap by driving is a different job. The game is
+   * put into the state by hand — a death, a capture, a win — and then stepped
+   * a few frames so the effect is mid-flight when the frame is drawn.
+   */
+  if (after) {
+    const flag = grid.flags[0]
+    if (after.kind === 'fall') {
+      const at = { x: Math.floor(game.ball.x), y: Math.floor(game.ball.y) }
+      game.traps.add(`${at.x},${at.y}`)
+    } else if (after.kind === 'pick' || after.kind === 'unlock') {
+      if (after.kind === 'unlock') for (const f of grid.flags.slice(1)) game.captured.add(`${f.x},${f.y}`)
+      game.ball.x = flag.x + 0.5
+      game.ball.y = flag.y + 0.5
+    } else if (after.kind === 'won') {
+      for (const f of grid.flags) game.captured.add(`${f.x},${f.y}`)
+      game.exitOpen = true
+      game.ball.x = grid.end.x + 0.5
+      game.ball.y = grid.end.y + 0.5
+    }
+    for (let i = 0; i < after.steps; i++) stepGame(game)
+  }
+  if (stick) game.stick = { x: game.ball.x + 1.5, y: game.ball.y + 2, dx: 0.5, dy: -0.2 }
 
   const canvas = createCanvas(grid.cols * CELL, grid.rows * CELL)
   render.drawScene(canvas.getContext('2d'), game, CELL)

@@ -3,7 +3,7 @@
 Where *Journey to Maizy* is, what is decided, and what is not. Read this and
 `README.md` and you have the whole picture.
 
-Last updated after the neurotypical-player pass (see *Phase 6* below).
+Last updated after the feel pass (see *Phase 8* below).
 
 ---
 
@@ -14,8 +14,10 @@ steer a small yellow shape through mazes you mostly cannot see, gathering maize,
 avoiding invisible traps, and — later — outrunning something. The yellow shape
 turns out to be his hat.
 
-Twenty-six levels in eleven chapters, plus a second act that races one field
-from each. Every level is **generated from a seed and proven beatable by a
+Thirty levels in thirteen chapters, plus a second act that races one field
+from each. The last two chapters are big — 28x16 and 38x21 against 18x11
+everywhere before — and on a screen too small to hold them the view scrolls
+with the hat. Every level is **generated from a seed and proven beatable by a
 simulated player before it ships**; no maze geometry is hand-authored anywhere
 in the repo.
 
@@ -52,12 +54,20 @@ tests, not by discipline.
    never allowed to gate correctness.
 3. **One new variable at a time.** The level a mechanic arrives on is identical
    to the one before it in every other respect — including its *shape*.
-4. **Picked maize is never lost to a trap.** Only the hunter can undo progress,
-   and that is what makes the countdown worth watching.
+4. **Picked maize is never lost to a trap — until something is hunting.** On
+   a field with no ghost a fall costs the walk back and nothing else. From the
+   level the ghost arrives, a fall costs every picked ear, the same as being
+   caught, and that never steps back down. Decided 2026-09-10: the stakes
+   should rise with the campaign, and a hunted field is where a player has
+   already learned to keep the walk short. Tested in `hunter.test.js`.
 5. **Silence early, instruments late, tutorials never.**
-6. **The game may only judge a number it showed you.** Act two turns on the
-   player having been slow, so the deadline is named in act one and the clock
-   is on the level list from the first field.
+6. **The game may only judge a number it showed you.** Act two races the
+   player against their own act-one times, and those were on the level list
+   from the first field. The *hour* — first light, the cart — is deliberately
+   **not** named until the camp: act one never says "late", the player is
+   told they were slow only when it is too late to matter, and act two is
+   what he does about it. (Reversed 2026-09-10; it used to be planted in the
+   Two Trips beat and the whispers.)
 7. **Assist settings never reach the simulation.** `createGame` defaults to
    `NEUTRAL` and the solvers pass nothing. See `engine/assist.test.js`.
 
@@ -74,7 +84,8 @@ src/
     physics.js     ball movement in cell units, fixed timestep, surface factors
     hunter.js      the ghost: pathing, waking, the two fairness invariants
     game.js        the rules, and nothing else
-    render.js      the only module that thinks in pixels; terrains and neon
+    fx.js          timestamped presentation events the rules never read
+    render.js      the only module that thinks in pixels; terrains, neon, effects
     sound.js       procedural audio: one-shots, footfalls, ambience, proximity
   generate/
     maze.js        seeded carve + loop injection
@@ -118,6 +129,38 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
 - **Phase 7 — the lantern.** Walls occlude the light. Shadows cut sight and
   never memory; what he sees is warm, what he remembers is cold. Safe because
   `fog` reaches no solver. 2.96 ms/frame on the biggest board, so canvas stays.
+- **Phase 9 — the arc, and the big dark.** Three things the user asked for
+  on 2026-09-10 after playing. *The deadline moved to act two*: "first light"
+  is gone from act one's beats and whispers, and lands in `TOO_LATE` as the
+  twist. *The stakes rise*: on hunted fields a trap costs the maize (rule 4,
+  above). *The fields get big*: two new tiers, `vast` (28x16) and `endless`
+  (38x21), two new chapters, The Long Dark and The Fires, with a per-tier
+  `patience` that lifts the 40 s perfect-play cap for them only, and a camera
+  in `useGameLoop` that follows the hat when the board will not fit at 26 px
+  a cell. Detour placement now scales its angular spacing with the ear count
+  (five ears at 75° apart is more than a circle holds, and was why the last
+  chapter refused to build for nine minutes).
+- **Phase 8 — feel.** Every state change used to be a hard cut: the hat
+  teleported on a trap, an ear vanished, a win snapped to a card, a level
+  started with the clock already running. Now there is an effects layer
+  (`engine/fx.js`: a list of timestamped events the renderer reads and the
+  rules never do) and the board animates the fall, the arrival back at the
+  start, the pick, the way opening, the ghost standing up, a knock against a
+  wall, and the hat going into the exit. The hat leans into its walk and bobs;
+  the maize breathes; the ghost drifts. A title card holds the field paused
+  for 1.3 s or until the first input, so the clock never counts reading time.
+  The touch stick is drawn. Every screen rises in rather than cutting. The
+  determinism guard is `fx.test.js`: a game whose effects are stripped every
+  step plays identically to one that keeps them. `npm run shots` now writes
+  five extra frames (`11-fall` to `15-stick`) with each effect mid-flight.
+  **Then pulled back, same day**, after the user saw it: "the sound and the
+  lights, it all feels a little bit too much." Wall bloom is one tight pass
+  at half the alpha, the hat and maize glow are small, the maize no longer
+  wobbles or pulses, every effect has fewer and smaller motes and one ring
+  instead of two, one-shots are triangles at roughly 60% of their old gain,
+  footfalls and ambience are 30% quieter, the default volume is 0.55, and
+  the CSS lost its bounce easing. The register he asked for was restrained
+  and orderly — keep it there. Do not add bloom back.
 - **Phase 6 — the player contract.** A critique from the seat of a mainstream
   player rather than from inside the design doctrine. The finding was that the
   game knew what it wanted you to *feel* and never told you what it wanted you
@@ -176,12 +219,19 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
 
 ## Things that will bite a new session
 
-- **Nothing visual has ever been seen by me.** The Chrome extension has still
-  not connected for this project — tried again 2026-08-29, "extension is not
-  connected". Every layout, colour and animation is reasoned from code and
-  verified headlessly. The neon, the trail map, the typing cards and now the
-  **assist panel in the pause menu** have never been looked at. Ask the user
-  before assuming they are right.
+- **The Chrome extension connects now (2026-09-10), but its tab sits in a
+  background window, so `requestAnimationFrame` never fires there and the
+  game cannot be *played* through it** — `document.hidden` is true and the
+  clock stays at 00:00. It is not a game bug. Screenshots of the DOM work
+  (level list, story cards, title card, pause menu have all been seen and two
+  layout bugs fixed from them). Moving frames still come from `npm run
+  shots`. The trail map, the result card and the finale have still not been
+  seen rendered.
+- **`game.paused` is set true at creation in `Play.jsx`** for the title card,
+  and the menu toggles off its own ref rather than off `game.paused` for that
+  reason. If the menu ever stops opening, look there first.
+- **`game.now` stops on a win; `game.outro` is the clock that runs after.**
+  The card waits `OUTRO_MS` for the hat to go in. Tests pin both.
 - **No audio has ever been heard.** Mix levels are reasoned, not tuned.
 - **`fog` does not affect the solvers.** `playBlind` has its own map and no
   vision model, so tightening fog carries zero generation risk *and* produces no
@@ -190,6 +240,10 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
 - **Three teaching lessons are regression guards, not shaping constraints.**
   `hunter`, `memory` and `traps` currently pass on every level. That is stated
   in the README on purpose.
+- **The camera is presentation only.** `game.camera` is set by the render
+  loop, read by `drawScene` and the touch stick, and never by a solver. When
+  the board fits, it stays `null` and nothing translates — `feel.test.js`
+  counts on that.
 - **The distinctness threshold (0.55) is calibrated, not chosen.** Raising it
   fails the build. If you change the metric vector, re-measure before changing
   the number.

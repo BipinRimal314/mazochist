@@ -113,6 +113,35 @@ const TIERS = {
     memory: 2500,
     hunter: { speed: 0.095, margin: 1.8 },
   },
+
+  /*
+   * Then the fields get big. Size is the last variable the campaign has to
+   * spend, and it is the one a player feels most directly: the same fog, the
+   * same ghost, the same rotting memory, on ground that goes on and on.
+   *
+   * `patience` lifts the oracle's cap on perfect-play time for these two
+   * tiers only — a board three times the area cannot be walked in forty
+   * seconds and was never meant to be. Nothing else about the judgment
+   * relaxes: zero deaths from perfect play, the same blind-player allowances.
+   *
+   * Ears and traps grow with the ground so the density stays roughly what it
+   * was; a huge board with three ears on it is a long walk, not a bigger
+   * problem.
+   */
+  vast: {
+    cols: 28, rows: 16, loops: 0.10, flags: 4, traps: 7, fog: 2.4,
+    sand: 5, snow: 5,
+    memory: 2500,
+    patience: 80,
+    hunter: { speed: 0.095, margin: 1.8 },
+  },
+  endless: {
+    cols: 38, rows: 21, loops: 0.10, flags: 5, traps: 9, fog: 2.4,
+    sand: 7, snow: 7,
+    memory: 2500,
+    patience: 120,
+    hunter: { speed: 0.095, margin: 1.8 },
+  },
 }
 
 /**
@@ -213,6 +242,10 @@ function placeFlags(grid, route, rng, count, intent = {}) {
    * happens to scatter the maize around the compass would burn thousands of
    * candidates. Choosing greedily for the widest gap gets there directly.
    */
+  // seventy-five degrees between ears, or as much as `count` ears can have
+  // around a circle with a little slack — five ears at seventy-five is more
+  // than a circle holds, which is how the big boards refused to build
+  const minSeparation = Math.min(Math.PI / 2.4, ((Math.PI * 2) / count) * 0.8)
   const angleOf = (c) => Math.atan2(c.y - grid.start.y, c.x - grid.start.x)
   const separation = (a, b) => {
     const d = Math.abs(angleOf(a) - angleOf(b))
@@ -227,7 +260,7 @@ function placeFlags(grid, route, rng, count, intent = {}) {
     if (tooClose) continue
     if (intent.spreadMaize && chosen.length > 0) {
       const nearest = Math.min(...chosen.map((c) => separation(c, candidate)))
-      if (nearest < Math.PI / 2.4) continue
+      if (nearest < minSeparation) continue
     }
     chosen.push(candidate)
   }
@@ -369,6 +402,7 @@ function buildCandidate(seed, tier, intent = {}) {
   const { grid, route } = built
   grid.fog = tier.fog
   grid.memory = tier.memory ?? null
+  grid.patience = tier.patience ?? null
 
   if (!placeFlags(grid, route, rng, tier.flags, intent)) return null
   if (!placeTraps(grid, route, rng, tier.traps, intent)) return null
@@ -546,6 +580,7 @@ function toJSON(level, name) {
     m: grid.memory,
     sf: surfaceCells(grid),
     h: grid.hunter ? [grid.hunter.spawnMs, grid.hunter.speed] : null,
+    p: grid.patience ?? null,
     difficulty: level.difficulty,
   }
 }
@@ -564,6 +599,7 @@ function fromJSON(data) {
     terrain: data.terrain ?? null,
     surface: surfaceFrom(data),
     hunter: data.h ? { spawnMs: data.h[0], speed: data.h[1] } : null,
+    patience: data.p ?? null,
   }
 }
 

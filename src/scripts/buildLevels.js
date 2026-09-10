@@ -182,6 +182,26 @@ const CHAPTERS = [
     count: 3,
     seed: 5000,
   },
+  // And then the ground opens out. Nothing new is switched on in these two
+  // chapters — size is the variable, and it is the one a player feels most.
+  {
+    name: 'The Long Dark',
+    intents: ['gauntlet', 'detour'],
+    terrain: 'night',
+    blurb: 'Past their fires. It was not the end of it.',
+    tier: 'vast',
+    count: 2,
+    seed: 7000,
+  },
+  {
+    name: 'The Fires',
+    intents: ['detour', 'artery'],
+    terrain: 'ember',
+    blurb: 'More fires. The real ones, this time.',
+    tier: 'endless',
+    count: 2,
+    seed: 7500,
+  },
 ]
 
 function build() {
@@ -239,6 +259,7 @@ function build() {
         `flags=${json.f.length} traps=${json.t.length} fog=${json.fog ?? '-'} ` +
         `hunter=${json.h ? `${(json.h[0] / 1000).toFixed(0)}s` : '-'} ` +
         `mem=${json.m ? `${(json.m / 1000).toFixed(1)}s` : '∞'} ` +
+        `${json.c}x${json.r} ` +
         `ground=${(() => {
           const sand = json.sf.filter(([, , k]) => k === 1).length
           const snow = json.sf.filter(([, , k]) => k === 2).length
