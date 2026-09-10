@@ -15,3 +15,8 @@ src-tauri/gen
 
 # board renders from `npm run shots` — regenerate rather than commit
 shots/
+
+# Vercel CLI appends this; .env.example is the documented template and is
+# meant to be committed, so it is excepted back in.
+.env*
+!.env.example
