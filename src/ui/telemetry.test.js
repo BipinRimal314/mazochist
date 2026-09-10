@@ -45,6 +45,13 @@ function installStorage(impl = fakeStorage()) {
  * These run against an unconfigured build — no env vars — which is both the
  * default for anyone who clones this and the case where a mistake would be
  * silent, since nothing would visibly break.
+ *
+ * The unconfigured block stubs the environment *empty* rather than trusting it
+ * to be empty. Vitest loads `.env.local` like Vite does, so once someone on the
+ * team actually configures telemetry, an ambient assumption here would turn
+ * three passing tests into three failures that say nothing about the code. A
+ * test whose result depends on whether a file exists on the developer's disk is
+ * not testing the property it claims to.
  */
 
 beforeEach(() => {
@@ -57,6 +64,12 @@ afterEach(() => {
 })
 
 describe('an unconfigured build', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_SUPABASE_URL', '')
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', '')
+  })
+  afterEach(() => { vi.unstubAllEnvs() })
+
   it('is disabled', () => {
     expect(enabled()).toBe(false)
   })

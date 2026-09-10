@@ -28,7 +28,7 @@ in the repo.
 | Web | <https://maizes-bipin314.vercel.app> — **stale, predates the cut to 26** |
 | Repo | <https://github.com/BipinRimal314/maizes> |
 | Desktop | builds locally on macOS (4.3 MB, Tauri). Windows and Linux **never built** |
-| Telemetry | written, tested, **switched off** — no Supabase project exists |
+| Telemetry | **live.** Supabase `maizes` (`qhetlsrtbpaobvpxwqkt`, ap-south-1) |
 
 ```bash
 npm run dev              # web, localhost:5173 — add ?dev to unlock everything
@@ -36,6 +36,7 @@ npm run levels           # regenerate the campaign
 npm test                 # 401 tests: engine properties + every level re-judged
 npm run desktop          # Tauri dev
 npm run desktop:build    # a bundle for the OS you are on
+npm run stats            # read the playtest back: funnel, and sim vs. reality
 vercel deploy --prod --yes
 ```
 
@@ -203,10 +204,9 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
   is written but has never run. Push a `v*` tag or trigger it manually.
 - **Code signing.** Unsigned builds trip Gatekeeper and SmartScreen. Apple
   Developer $99/yr, Windows cert $200–400/yr.
-- **Telemetry inert.** Create a Supabase project, run
-  `supabase/migrations/0001_play_events.sql`, put the URL + anon key in
-  `.env.local`. Roughly twenty minutes, and it turns every difficulty argument
-  into a number.
+- **Telemetry is on, and nobody has played it yet.** The database exists and
+  the pipeline is verified end to end (real browser, real insert, read back
+  through `npm run stats`). What is missing is players. See *Telemetry* below.
 - **Off-route discoveries** (Phase 3's fifth item) were skipped deliberately
   rather than half-built. They need a new grid content type, placement,
   rendering, persistence and text.
@@ -216,6 +216,38 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
   only the board has been looked at.
 
 ---
+
+## Telemetry
+
+Supabase project **`maizes`** — `qhetlsrtbpaobvpxwqkt`, ap-south-1, created
+2026-09-10. Dashboard:
+<https://supabase.com/dashboard/project/qhetlsrtbpaobvpxwqkt>
+
+Two keys, and the difference between them is the whole security model:
+
+| | prefix | can | lives in |
+|---|---|---|---|
+| anon | `VITE_` | INSERT only | the built page, publicly |
+| service_role | no prefix | read everything | `.env.local`, gitignored |
+
+Vite only exposes `VITE_*` to the bundle, so the service key cannot reach a
+browser by accident. That is verified, not assumed — the build was grepped for
+it. Row-level security on `play_events` grants anon INSERT and no SELECT, so a
+reader of the page cannot pull back other testers' rows. Also verified:
+inserting with the anon key returns 201, selecting with it returns `[]`.
+
+`npm run stats` puts the *prediction* next to the *measurement* — each level's
+`blindDeaths` and `perfectSeconds` from the solvers, beside what real players
+actually did. That comparison is the reason the telemetry exists and is the
+thing the Supabase dashboard cannot show you.
+
+**The events the game sends and the events the table accepts must match.** They
+did not: `speedrun_conceded` — the player choosing to stop looking, the single
+most interesting thing a tester can do — was recorded by the game and refused by
+the check constraint. Silent by construction: the insert 400s, the row is
+queued, every later flush re-sends it and is refused again. Fixed 2026-09-10 and
+guarded by `telemetry.schema.test.js`, which parses both files and compares
+them.
 
 ## Things that will bite a new session
 
@@ -247,6 +279,17 @@ they are baked into `levels.json`. Change one and run `npm run levels`.
 - **The distinctness threshold (0.55) is calibrated, not chosen.** Raising it
   fails the build. If you change the metric vector, re-measure before changing
   the number.
+- **The Vercel project is on a different Google identity than the Vercel CLI.**
+  `.vercel/project.json` points at `team_BEGT2xmKtBDdKl1m7iRAB7Zn`, which the
+  logged-in CLI account (`bipinrimal1@gmail.com`) cannot read — `vercel env ls`
+  fails with "Could not retrieve Project Settings", which reads like a broken
+  link and is not one. The live site is up and serving from that other account.
+  See [[vercel-author-block]]; this is the same tangle of identities.
+- **`.env.local` is loaded by vitest, exactly as Vite loads it.** The telemetry
+  tests that assert "an unconfigured build sends nothing" therefore stub the
+  environment empty rather than trusting it to be empty — before that they
+  passed only on machines with no telemetry configured, and broke the moment
+  the database went live.
 - **`src-tauri/target` is ~1 GB.** It is in `.gitignore` and `.vercelignore`.
   Leaving it out of either breaks that deploy path.
 - **Tests re-judge the shipped `levels.json`, not the generator.** If you change

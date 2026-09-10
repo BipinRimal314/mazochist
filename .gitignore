@@ -6,6 +6,10 @@ __pycache__/
 .env.local
 .env
 .vercel
+
+# Supabase CLI scratch: which project this machine is linked to, cached
+# version strings. Machine-local, and re-created by `supabase link`.
+supabase/.temp
 src-tauri/target
 src-tauri/gen
 

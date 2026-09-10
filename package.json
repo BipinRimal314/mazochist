@@ -16,7 +16,8 @@
     "tauri": "tauri",
     "desktop": "tauri dev",
     "desktop:build": "tauri build",
-    "shots": "node --import ./src/scripts/assetLoader.js src/scripts/shots.js"
+    "shots": "node --import ./src/scripts/assetLoader.js src/scripts/shots.js",
+    "stats": "node src/scripts/stats.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

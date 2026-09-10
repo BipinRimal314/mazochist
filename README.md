@@ -10,6 +10,7 @@ npm install
 npm run dev       # http://localhost:5173
 npm test          # engine properties + every level re-judged
 npm run levels    # regenerate the campaign
+npm run stats     # read the playtest back, if telemetry is configured
 npm run build
 ```
 
